@@ -74,7 +74,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 <!-- Add your welcome page screenshot below -->
 
 
-![Welcome Page](<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/5415a397-f694-40c1-8732-d15996cbfc55" />)
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/5415a397-f694-40c1-8732-d15996cbfc55" />
 
 ---
 
@@ -93,7 +93,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 <!-- Add your citizen login screenshot below -->
 
 
-![Citizen Login](<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1331cf45-1a53-4c4c-affe-b2f62a0057e9" />)
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1331cf45-1a53-4c4c-affe-b2f62a0057e9" />
 
 ---
 
@@ -111,7 +111,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 
 <!-- Add your citizen dashboard screenshot below -->
 
-![Citizen Dashboard](<img width="1178" height="840" alt="image" src="https://github.com/user-attachments/assets/15a6e08c-7111-4ad2-92c9-0ca3d018e5cf" />)
+<img width="1178" height="840" alt="image" src="https://github.com/user-attachments/assets/15a6e08c-7111-4ad2-92c9-0ca3d018e5cf" />
 
 ---
 
@@ -130,7 +130,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 
 <!-- Add your complaint submission screenshot below -->
 
-![Complaint Submission](<img width="1027" height="905" alt="image" src="https://github.com/user-attachments/assets/1e69c122-8ab3-4c78-8f4b-27bc75b1d1d0" />)
+<img width="1027" height="905" alt="image" src="https://github.com/user-attachments/assets/1e69c122-8ab3-4c78-8f4b-27bc75b1d1d0" />
 
 ---
 
@@ -148,12 +148,12 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 
 <!-- Add your complaint tracking screenshot below -->
 
-![Complaint Tracking](
+
 <img width="1101" height="906" alt="Screenshot 2026-11-21 173315" src="https://github.com/user-attachments/assets/3516747a-b897-4f52-8da6-aa04e9f4f2ec" />
 
 <img width="1163" height="905" alt="image" src="https://github.com/user-attachments/assets/5a4b206b-d94f-40f0-bf8c-0e005a0b0dfa" />
 
-)
+
 
 ---
 
@@ -170,7 +170,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 
 <!-- Add your officer login screenshot below -->
 
-![Officer Login](<img width="600" height="697" alt="image" src="https://github.com/user-attachments/assets/76c645eb-652a-4947-b8cb-550f396b5976" />)
+<img width="600" height="697" alt="image" src="https://github.com/user-attachments/assets/76c645eb-652a-4947-b8cb-550f396b5976" />
 
 ---
 
@@ -189,7 +189,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 
 <!-- Add your officer dashboard screenshot below -->
 
-![Officer Dashboard](<img width="1142" height="907" alt="image" src="https://github.com/user-attachments/assets/a4021095-f97b-4367-8815-a0d52eb64c06" />)
+<img width="1142" height="907" alt="image" src="https://github.com/user-attachments/assets/a4021095-f97b-4367-8815-a0d52eb64c06" />
 
 ---
 
@@ -207,7 +207,7 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 
 <!-- Add your complaint management screenshot below -->
 
-![Complaint Management](<img width="1107" height="897" alt="image" src="https://github.com/user-attachments/assets/0ae0a839-4bd4-47c5-9c60-931162c5b970" />)
+<img width="1107" height="897" alt="image" src="https://github.com/user-attachments/assets/0ae0a839-4bd4-47c5-9c60-931162c5b970" />
 
 ---
 
