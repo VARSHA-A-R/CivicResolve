@@ -24,6 +24,15 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment Variables
+# Environment variables
 .env
-.env.production
+.env.*
+!.env.example
+
+# Credentials and private keys
+*.pem
+*.key
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+credentials/

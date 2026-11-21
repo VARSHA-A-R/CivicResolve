@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useComplaints } from '../context/ComplaintContext';
 import { useAuth } from '../context/AuthContext';
+import { analyzeCivicIssueWithGemini } from '../services/geminiService';
 import {
-  analyzeCivicIssueWithGemini,
-} from '../services/geminiService';
-import { AIAnalysisCard } from '../components/complaints/AIAnalysisCard';
+  readComplaintImageAsDataUrl,
+  uploadComplaintImage,
+  validateComplaintImage,
+} from '../services/storageService';
 import { Button } from '../components/ui/Button';
-import type { AIAnalysisResult } from '../types';
 import {
   Camera,
   MapPin,
-  Sparkles,
   Send,
   X,
   AlertCircle,
@@ -19,8 +19,39 @@ import {
   Copy,
   ArrowRight,
   Navigation,
-  Info,
 } from 'lucide-react';
+
+function createSubmissionKey(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function runSubmissionStage<T>(stage: string, operation: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  if (import.meta.env.DEV) console.info(`[CivicResolve] Complaint submission started: ${stage}`);
+  try {
+    const result = await operation();
+    if (import.meta.env.DEV) {
+      console.info(`[CivicResolve] Complaint submission completed: ${stage} (${Date.now() - startedAt}ms)`);
+    }
+    return result;
+  } catch (error) {
+    const errorName = error instanceof Error ? error.name : 'UnknownError';
+    if (import.meta.env.DEV) {
+      console.error(`[CivicResolve] Complaint submission failed: ${stage} (${errorName})`);
+    }
+    const message = error instanceof Error ? error.message : 'Unexpected error.';
+    throw new Error(`${stage} failed: ${message}`);
+  }
+}
+
+function logValidationFailure(field: string): void {
+  if (import.meta.env.DEV) {
+    console.warn(`[CivicResolve] Complaint submission blocked: validation (${field}).`);
+  }
+}
 
 export const ReportIssuePage: React.FC = () => {
   const { createComplaint } = useComplaints();
@@ -30,66 +61,68 @@ export const ReportIssuePage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [landmark, setLandmark] = useState('');
   const [citizenName, setCitizenName] = useState(user?.displayName || 'Citizen Contributor');
-  const [citizenContact, setCitizenContact] = useState(user?.phoneNumber || '+91 98450 12345');
+  const [citizenContact, setCitizenContact] = useState(user?.phoneNumber || '');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isReadingImage, setIsReadingImage] = useState(false);
 
   // AI & Submission State
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiPreviewResult, setAiPreviewResult] = useState<AIAnalysisResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInFlight = useRef(false);
+  const submissionAttempt = useRef<{ fingerprint: string; key: string } | null>(null);
   const [submittedComplaintId, setSubmittedComplaintId] = useState<string | null>(null);
+  const [submittedTitle, setSubmittedTitle] = useState('');
+  const [submittedAt, setSubmittedAt] = useState('');
   const [copiedId, setCopiedId] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Trigger automated AI Analysis when title or description change (with debounce)
+  // Sync user display name if changed
   useEffect(() => {
-    if (title.trim().length < 5 && description.trim().length < 10) {
-      setAiPreviewResult(null);
-      return;
+    if (user?.displayName && citizenName === 'Citizen Contributor') {
+      setCitizenName(user.displayName);
     }
+    if (user?.phoneNumber && !citizenContact) {
+      setCitizenContact(user.phoneNumber);
+    }
+  }, [user, citizenName, citizenContact]);
 
-    const timer = setTimeout(async () => {
-      setIsAnalyzing(true);
-      try {
-        const result = await analyzeCivicIssueWithGemini(
-          title,
-          description,
-          imagePreview || undefined
-        );
-        setAiPreviewResult(result);
-      } catch (err) {
-        console.error('AI preview failed:', err);
-      } finally {
-        setIsAnalyzing(false);
-      }
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, [title, description, imagePreview]);
-
-  // Handle Image Upload
+  // Handle Image Selection & Validation
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.currentTarget.value = '';
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setFormError('Image file size must be less than 5MB.');
+    const validation = validateComplaintImage(file);
+    if (!validation.valid) {
+      setFormError(validation.error || 'Invalid image file.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-      setFormError(null);
-    };
-    reader.readAsDataURL(file);
+    setSelectedFile(file);
+    setFormError(null);
+
+    setIsReadingImage(true);
+    void readComplaintImageAsDataUrl(file)
+      .then(setImagePreview)
+      .catch((error: unknown) => {
+        setSelectedFile(null);
+        setFormError(
+          error instanceof Error
+            ? `Photo preparation failed: ${error.message}`
+            : 'Photo preparation failed. The selected photograph could not be read.'
+        );
+      })
+      .finally(() => setIsReadingImage(false));
   };
 
   const removeImage = () => {
     setImagePreview(null);
+    setSelectedFile(null);
+    setIsReadingImage(false);
   };
 
   // Browser Geolocation Helper
@@ -104,12 +137,13 @@ export const ReportIssuePage: React.FC = () => {
       (pos) => {
         const lat = pos.coords.latitude.toFixed(4);
         const lng = pos.coords.longitude.toFixed(4);
-        setAddress(`Near Lat: ${lat}, Lng: ${lng}, Indiranagar Ward 142, Bangalore`);
+        setAddress(`GPS coordinates: ${lat}, ${lng}`);
+        setCoordinates({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setIsLocating(false);
       },
       (err) => {
         console.warn('Geolocation failed:', err);
-        setAddress('100ft Ring Road, Indiranagar, Bangalore - 560038');
+        setFormError('Could not detect your current location. Please enter the street address manually.');
         setIsLocating(false);
       },
       { timeout: 8000 }
@@ -119,57 +153,110 @@ export const ReportIssuePage: React.FC = () => {
   // Handle Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInFlight.current) return;
     setFormError(null);
 
-    if (!title.trim()) {
-      setFormError('Please enter an issue title.');
+    if (!title.trim() || title.trim().length < 5) {
+      logValidationFailure('title');
+      setFormError('Please enter a descriptive issue title (minimum 5 characters).');
       return;
     }
-    if (!description.trim()) {
-      setFormError('Please enter a detailed description.');
+    if (!description.trim() || description.trim().length < 10) {
+      logValidationFailure('description');
+      setFormError('Please enter a detailed description (minimum 10 characters).');
       return;
     }
     if (!address.trim()) {
+      logValidationFailure('location');
       setFormError('Please provide the location address.');
       return;
     }
+    if (isReadingImage) {
+      logValidationFailure('photo preparation');
+      setFormError('Please wait for the selected photograph to finish preparing.');
+      return;
+    }
+    if (!user?.uid) {
+      logValidationFailure('authentication');
+      setFormError('Please sign in again before submitting a complaint.');
+      return;
+    }
 
+    const fingerprint = JSON.stringify([
+      title.trim(),
+      description.trim(),
+      address.trim(),
+      landmark.trim(),
+      citizenName.trim(),
+      citizenContact.trim(),
+      selectedFile ? [selectedFile.name, selectedFile.size, selectedFile.lastModified] : null,
+    ]);
+    if (submissionAttempt.current?.fingerprint !== fingerprint) {
+      submissionAttempt.current = { fingerprint, key: createSubmissionKey() };
+    }
+
+    submissionInFlight.current = true;
     setIsSubmitting(true);
 
     try {
-      // Final Gemini analysis or reuse current preview
-      let finalAI = aiPreviewResult;
-      if (!finalAI) {
-        finalAI = await analyzeCivicIssueWithGemini(
-          title,
-          description,
-          imagePreview || undefined
+      if (import.meta.env.DEV) console.info('[CivicResolve] Complaint submission validation completed.');
+      // 1. Upload photographic evidence to Firebase Storage if a file was selected
+      let finalImageUrl: string | undefined = undefined;
+      if (selectedFile) {
+        finalImageUrl = await runSubmissionStage(
+          'Photo upload',
+          () => uploadComplaintImage(selectedFile, user.uid)
         );
+      } else if (import.meta.env.DEV) {
+        console.info('[CivicResolve] Complaint submission photo upload skipped: no photo selected.');
       }
 
-      const created = await createComplaint({
-        title: title.trim(),
-        description: description.trim(),
-        location: {
-          address: address.trim(),
-          landmark: landmark.trim() || undefined,
-          city: 'Bangalore',
-        },
-        imageUrl: imagePreview || undefined,
-        status: 'reported',
-        priority: finalAI.priority,
-        category: finalAI.category,
-        department: finalAI.recommendedDepartment,
-        citizenName: citizenName.trim(),
-        citizenContact: citizenContact.trim(),
-        aiAnalysis: finalAI,
-      });
+      // 2. Generate assessment once; Gemini failure transparently falls back to heuristic
+      const finalAI = await runSubmissionStage(
+        'AI classification',
+        () => analyzeCivicIssueWithGemini(
+          title,
+          description,
+          address,
+          imagePreview || undefined
+        )
+      );
+      if (import.meta.env.DEV) {
+        console.info(`[CivicResolve] Complaint assessment source: ${finalAI.source}`);
+      }
+
+      // 3. Create verified complaint record in Cloud Firestore
+      const created = await runSubmissionStage('Firestore save', () =>
+        createComplaint({
+          title: title.trim(),
+          description: description.trim(),
+          location: {
+            address: address.trim(),
+            ...(landmark.trim() ? { landmark: landmark.trim() } : {}),
+            city: 'Bangalore',
+            ...(coordinates ? { coordinates } : {}),
+          },
+          ...(finalImageUrl ? { imageUrl: finalImageUrl } : {}),
+          status: 'reported',
+          priority: finalAI.priority,
+          category: finalAI.category,
+          department: finalAI.recommendedDepartment,
+          citizenName: citizenName.trim(),
+          citizenContact: citizenContact.trim(),
+          ...(user.email ? { citizenEmail: user.email } : {}),
+          citizenUid: user.uid,
+          aiAnalysis: finalAI,
+        }, submissionAttempt.current!.key)
+      );
 
       setSubmittedComplaintId(created.id);
-    } catch (err) {
-      console.error('Complaint submission error:', err);
-      setFormError('Failed to submit complaint. Please check fields and try again.');
+      setSubmittedTitle(created.title);
+      setSubmittedAt(created.createdAt);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to submit complaint. Please check fields and try again.';
+      setFormError(msg);
     } finally {
+      submissionInFlight.current = false;
       setIsSubmitting(false);
     }
   };
@@ -191,16 +278,21 @@ export const ReportIssuePage: React.FC = () => {
 
         <div className="space-y-2">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Grievance Registered Successfully
+            Complaint submitted successfully
           </h1>
           <p className="text-sm text-slate-600 max-w-lg mx-auto">
-            Your issue has been logged, triaged with Google Gemini AI, and routed to the municipal
-            ward division with an active resolution SLA.
+            Your civic issue report has been saved and assigned a tracking ID.
           </p>
         </div>
 
         {/* Tracking ID Callout */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-md mx-auto space-y-3">
+          <div className="text-sm font-semibold text-slate-800">{submittedTitle}</div>
+          {submittedAt && (
+            <div className="text-xs text-slate-500">
+              Submitted {new Date(submittedAt).toLocaleString()}
+            </div>
+          )}
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
             Your Official Tracking ID
           </span>
@@ -229,7 +321,7 @@ export const ReportIssuePage: React.FC = () => {
         <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
           <Link to={`/track?id=${submittedComplaintId}`}>
             <Button variant="teal" size="lg" rightIcon={<ArrowRight className="w-5 h-5" />}>
-              Track This Issue Live
+              Track Complaint
             </Button>
           </Link>
           <Link to="/dashboard">
@@ -253,7 +345,7 @@ export const ReportIssuePage: React.FC = () => {
           Report a Civic Infrastructure Issue
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          Describe the problem below. Our integrated Google Gemini AI engine will analyze hazard severity and automatically dispatch it to the correct municipal authority.
+          Describe the issue and provide its location. Your report will be classified and routed for municipal review.
         </p>
       </div>
 
@@ -264,10 +356,8 @@ export const ReportIssuePage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Form + Live AI Preview Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Form (7 Cols) */}
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-civic-card">
+      <div className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-civic-card">
           {/* Issue Title */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -323,7 +413,10 @@ export const ReportIssuePage: React.FC = () => {
                 type="text"
                 placeholder="Street address, Cross, Ward, or Road name..."
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  setCoordinates(undefined);
+                }}
                 className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-lg border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 placeholder:text-slate-400"
                 required
               />
@@ -347,7 +440,7 @@ export const ReportIssuePage: React.FC = () => {
           {/* Photo Evidence Upload */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Photographic Evidence (Optional, Multimodal Gemini Support)
+              Photographic Evidence (Validated Image Upload & Multimodal AI)
             </label>
 
             {imagePreview ? (
@@ -370,13 +463,14 @@ export const ReportIssuePage: React.FC = () => {
               <label className="border-2 border-dashed border-slate-300 hover:border-teal-500 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer bg-slate-50 hover:bg-teal-50/30 transition group">
                 <Camera className="w-8 h-8 text-slate-400 group-hover:text-teal-600 transition mb-2" />
                 <span className="text-xs font-semibold text-slate-700">
-                  Click to snap photo or upload image
+                  {isReadingImage ? 'Preparing photograph...' : 'Click to snap photo or upload image'}
                 </span>
-                <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, or WEBP up to 5MB</span>
+                <span className="text-[11px] text-slate-400 mt-0.5">JPEG, PNG, or WebP up to 5MB</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleImageChange}
+                  disabled={isReadingImage}
                   className="hidden"
                 />
               </label>
@@ -417,7 +511,7 @@ export const ReportIssuePage: React.FC = () => {
               type="submit"
               variant="teal"
               size="lg"
-              isLoading={isSubmitting}
+              isLoading={isSubmitting || isReadingImage}
               leftIcon={<Send className="w-4 h-4" />}
               className="w-full font-bold shadow-sm"
             >
@@ -426,51 +520,6 @@ export const ReportIssuePage: React.FC = () => {
           </div>
         </form>
 
-        {/* Right Column: Dedicated AI Analysis Preview Section (5 Cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-civic-card">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-teal-600" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Dedicated AI Analysis Preview
-                </h3>
-              </div>
-              {isAnalyzing && (
-                <span className="text-[11px] font-semibold text-teal-600 animate-pulse">
-                  Triage in progress...
-                </span>
-              )}
-            </div>
-
-            <div className="mt-4">
-              {aiPreviewResult ? (
-                <AIAnalysisCard analysis={aiPreviewResult} isPreview={true} />
-              ) : (
-                <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 space-y-2">
-                  <Sparkles className="w-8 h-8 text-slate-300 mx-auto" />
-                  <div className="text-xs font-bold text-slate-700">
-                    Type your report to see live AI triage
-                  </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-                    As you type title and description, Google Gemini automatically calculates priority, assigns the correct department, and projects the repair SLA in real time.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Municipal Service Guarantee Card */}
-          <div className="bg-slate-900 text-slate-300 p-5 rounded-2xl border border-slate-800 text-xs space-y-2.5">
-            <div className="flex items-center gap-2 text-white font-semibold">
-              <Info className="w-4 h-4 text-teal-400" />
-              <span>Municipal Charter Guarantee</span>
-            </div>
-            <p className="text-slate-400 leading-relaxed text-[11px]">
-              Every ticket filed through CivicResolve receives an immutable timestamp, public tracking ID, and guaranteed official review within 24 hours under the Citizens' Right to Public Services Act.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

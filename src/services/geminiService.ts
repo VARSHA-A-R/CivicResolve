@@ -1,18 +1,15 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
+import { app, isFirebaseConfigured } from './firebase';
 import type {
   AIAnalysisResult,
   ComplaintCategory,
   ComplaintPriority,
   CivicDepartment,
+  RawGeminiResponse,
+  LocationInfo,
 } from '../types';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-export const isGeminiConfigured = (): boolean => {
-  return typeof GEMINI_API_KEY === 'string' && GEMINI_API_KEY.trim().length > 0;
-};
-
-const CATEGORY_MAP: Record<ComplaintCategory, { label: string; department: CivicDepartment }> = {
+export const CATEGORY_MAP: Record<ComplaintCategory, { label: string; department: CivicDepartment }> = {
   roads: {
     label: 'Roads & Pavement',
     department: 'Roads & Infrastructure',
@@ -43,43 +40,140 @@ const CATEGORY_MAP: Record<ComplaintCategory, { label: string; department: Civic
   },
 };
 
+const VALID_CATEGORIES: ComplaintCategory[] = [
+  'roads',
+  'garbage',
+  'streetlights',
+  'water',
+  'drainage',
+  'encroachment',
+  'other',
+];
+
+const VALID_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
+const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error(`Gemini analysis timed out after ${timeoutMs / 1000} seconds`)),
+          timeoutMs
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 /**
- * Heuristic civic analysis used as an intelligent offline fallback
- * when the Google Gemini API key has not yet been set in .env.
- * Explicitly labeled as 'civic-rule-engine-fallback' for transparency.
+ * Validates the raw JSON output returned by Gemini.
+ * Throws a descriptive Error if the structure or types are invalid.
+ */
+export function validateGeminiResponse(raw: unknown): RawGeminiResponse {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Gemini response validation failed: response is not a valid JSON object');
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  // Validate category
+  const rawCategory = typeof obj.category === 'string' ? obj.category.trim().toLowerCase() : '';
+  const categoryMatch = VALID_CATEGORIES.find((cat) => cat === rawCategory) || 'other';
+
+  // Validate priority
+  const rawPriority = typeof obj.priority === 'string' ? obj.priority.trim().toUpperCase() : '';
+  if (!VALID_PRIORITIES.includes(rawPriority as (typeof VALID_PRIORITIES)[number])) {
+    throw new Error(`Gemini response validation failed: invalid priority "${obj.priority}". Expected LOW, MEDIUM, HIGH, or CRITICAL.`);
+  }
+
+  // Validate urgencyScore (must be integer between 1 and 10)
+  const urgencyNum = Number(obj.urgencyScore);
+  if (isNaN(urgencyNum) || urgencyNum < 1 || urgencyNum > 10) {
+    throw new Error(`Gemini response validation failed: invalid urgencyScore "${obj.urgencyScore}". Expected a number between 1 and 10.`);
+  }
+
+  // Validate department
+  if (!obj.department || typeof obj.department !== 'string' || obj.department.trim().length === 0) {
+    throw new Error('Gemini response validation failed: missing or empty "department" string.');
+  }
+
+  // Validate reason
+  if (!obj.reason || typeof obj.reason !== 'string' || obj.reason.trim().length === 0) {
+    throw new Error('Gemini response validation failed: missing or empty "reason" string.');
+  }
+
+  // Validate recommendedAction
+  if (!obj.recommendedAction || typeof obj.recommendedAction !== 'string' || obj.recommendedAction.trim().length === 0) {
+    throw new Error('Gemini response validation failed: missing or empty "recommendedAction" string.');
+  }
+
+  // Validate estimatedResolutionDays
+  const daysNum = Number(obj.estimatedResolutionDays);
+  if (isNaN(daysNum) || daysNum <= 0) {
+    throw new Error(`Gemini response validation failed: invalid estimatedResolutionDays "${obj.estimatedResolutionDays}". Expected a positive number.`);
+  }
+
+  return {
+    category: categoryMatch,
+    priority: rawPriority as (typeof VALID_PRIORITIES)[number],
+    urgencyScore: Math.round(urgencyNum),
+    department: obj.department.trim(),
+    reason: obj.reason.trim(),
+    recommendedAction: obj.recommendedAction.trim(),
+    estimatedResolutionDays: Math.round(daysNum),
+  };
+}
+
+/**
+ * Heuristic civic analysis used as an intelligent offline/demo fallback
+ * when Firebase is not configured or network/credentials fail.
+ * Explicitly labeled as 'civic-rule-engine-fallback' for 100% transparency.
  */
 export function analyzeCivicIssueOffline(
   title: string,
   description: string,
+  location?: LocationInfo | string,
   categoryHint?: string
 ): AIAnalysisResult {
-  const text = `${title} ${description} ${categoryHint || ''}`.toLowerCase();
+  const locText = typeof location === 'string' ? location : location?.address || '';
+  const text = `${title} ${description} ${locText} ${categoryHint || ''}`.toLowerCase();
 
   let category: ComplaintCategory = 'other';
   let priority: ComplaintPriority = 'medium';
   let urgencyScore = 5;
   let safetyHazard = false;
-  let estimatedResolutionTime = '3 to 5 business days';
+  let estimatedResolutionDays = 3;
 
   // Keyword categorization
   if (text.match(/pothole|crater|asphalt|road|tarmac|divider|speed breaker|pavement|sidewalk/i)) {
     category = 'roads';
     urgencyScore = 6;
+    estimatedResolutionDays = 2;
   } else if (text.match(/garbage|trash|waste|dump|stench|litter|bins?|decay|debris/i)) {
     category = 'garbage';
     urgencyScore = 6;
+    estimatedResolutionDays = 1;
   } else if (text.match(/streetlight|lamp|dark|bulb|short circuit|wire|electric pole|pole/i)) {
     category = 'streetlights';
     urgencyScore = 7;
+    estimatedResolutionDays = 2;
   } else if (text.match(/leak|burst|pipe|potable water|drinking water|supply|low pressure/i)) {
     category = 'water';
     urgencyScore = 7;
+    estimatedResolutionDays = 1;
   } else if (text.match(/drain|gutter|clog|overflow|manhole|sewer|waterlogging|stagnant/i)) {
     category = 'drainage';
     urgencyScore = 8;
+    estimatedResolutionDays = 2;
   } else if (text.match(/encroach|illegal shop|footpath occupied|stall|blocked passage/i)) {
     category = 'encroachment';
     urgencyScore = 4;
+    estimatedResolutionDays = 4;
   }
 
   // Priority & safety hazard evaluation
@@ -87,60 +181,33 @@ export function analyzeCivicIssueOffline(
     priority = 'critical';
     urgencyScore = Math.max(urgencyScore, 9);
     safetyHazard = true;
-    estimatedResolutionTime = 'Within 12 to 24 hours';
+    estimatedResolutionDays = 1;
   } else if (text.match(/deep|flooding|school|hospital|major traffic|severe|infection|health/i)) {
     priority = 'high';
     urgencyScore = Math.max(urgencyScore, 8);
     safetyHazard = true;
-    estimatedResolutionTime = '24 to 48 hours';
+    estimatedResolutionDays = 2;
   } else if (text.match(/minor|cosmetic|small|paint|faded/i)) {
     priority = 'low';
     urgencyScore = Math.min(urgencyScore, 3);
     safetyHazard = false;
-    estimatedResolutionTime = '5 to 7 business days';
-  } else if (priority === 'medium') {
-    estimatedResolutionTime = '2 to 4 business days';
+    estimatedResolutionDays = 5;
   }
 
   const categoryMeta = CATEGORY_MAP[category];
 
-  const actionMap: Record<ComplaintCategory, string[]> = {
-    roads: [
-      'Dispatch road repair crew for cold-mix / bitumen patch repair',
-      'Deploy traffic cones and warning indicators around the damaged area',
-      'Inspect structural foundation for subsurface cavitation',
-    ],
-    garbage: [
-      'Route sanitation compactor truck to specified coordinates',
-      'Conduct disinfection and lime powder spraying post clearing',
-      'Issue warning note if repeated commercial dumping is detected',
-    ],
-    streetlights: [
-      'Dispatch electrical lineworker vehicle with hoist mechanism',
-      'Test subterranean feeder cable for voltage drop or insulation breakdown',
-      'Replace luminaire with energy-efficient smart LED unit',
-    ],
-    water: [
-      'Isolate distribution valve segment to minimize potable water loss',
-      'Excavate pipeline joint and install rapid repair clamp',
-      'Test water pressure at downstream residential junctions',
-    ],
-    drainage: [
-      'Mobilize jetting & suction machine to clear debris obstruction',
-      'Inspect cover integrity and replace missing manhole lid immediately',
-      'Check stormwater gravity gradient to prevent monsoon waterlogging',
-    ],
-    encroachment: [
-      'Issue formal notice under Municipal Corporation Act',
-      'Deploy enforcement squad with local police escort',
-      'Clear pedestrian pathway and restore public right-of-way',
-    ],
-    other: [
-      'Assign municipal liaison officer for on-ground site inspection',
-      'Coordinate with pertinent municipal board or public utility',
-      'Update complainant with preliminary assessment within 48 hours',
-    ],
+  const actionMap: Record<ComplaintCategory, string> = {
+    roads: 'Deploy asphalt road crew with cold-tar compaction equipment and erect traffic safety cones.',
+    garbage: 'Dispatch hydraulic compactor truck to clear overflow and sanitize site with disinfectant.',
+    streetlights: 'Deploy cherry-picker vehicle to repair subterranean cabling junction and replace LED luminaire.',
+    water: 'Isolate localized distribution valve, excavate collar section, and seat rapid pipe repair clamp.',
+    drainage: 'Mobilize high-pressure jetting machine to extract silt blockage and seat heavy-duty manhole cover.',
+    encroachment: 'Issue municipal formal violation notice and deploy enforcement team to clear public pedestrian walkway.',
+    other: 'Dispatch ward liaison officer for preliminary physical site inspection and stakeholder consultation.',
   };
+
+  const recommendedAction = actionMap[category];
+  const reason = `Heuristic classification assessed ${categoryMeta.label} issue with ${priority.toUpperCase()} urgency based on reported civic incident description.`;
 
   return {
     category,
@@ -148,9 +215,16 @@ export function analyzeCivicIssueOffline(
     priority,
     recommendedDepartment: categoryMeta.department,
     urgencyScore,
-    summary: `Heuristic classification: ${categoryMeta.label} issue with ${priority} priority. Immediate inspection recommended.`,
-    keyActionItems: actionMap[category],
-    estimatedResolutionTime,
+    summary: reason,
+    reason,
+    recommendedAction,
+    estimatedResolutionDays,
+    keyActionItems: [
+      recommendedAction,
+      'Deploy designated ward engineering inspection team',
+      'Upload verified post-remediation photographic proof',
+    ],
+    estimatedResolutionTime: `${estimatedResolutionDays} day${estimatedResolutionDays > 1 ? 's' : ''}`,
     safetyHazard,
     confidenceScore: 0.88,
     source: 'civic-rule-engine-fallback',
@@ -158,90 +232,105 @@ export function analyzeCivicIssueOffline(
 }
 
 /**
- * Analyzes a civic issue using Google Gemini AI with fallback to heuristic logic.
- * Supports image context if imageBase64 is supplied.
+ * Analyzes a civic issue using Firebase AI Logic and the currently supported gemini-3.8-flash model.
+ * Includes complaint title, description, location, and optional uploaded image.
+ * Uses structured JSON output with strict response validation.
+ * Falls back to explicitly labeled heuristic engine when offline or unconfigured.
  */
 export async function analyzeCivicIssueWithGemini(
   title: string,
   description: string,
+  location?: LocationInfo | string,
   imageBase64?: string
 ): Promise<AIAnalysisResult> {
-  if (!isGeminiConfigured()) {
-    // Transparently use offline rule engine and indicate fallback
-    return analyzeCivicIssueOffline(title, description);
+  // If Firebase is not configured, transparently use offline heuristic fallback
+  if (!isFirebaseConfigured() || !app) {
+    console.info('[CivicResolve] Firebase is not configured. Utilizing labeled heuristic engine fallback.');
+    return analyzeCivicIssueOffline(title, description, location);
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // Use gemini-1.5-flash for fastest sub-second response in civic UI
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+    // Official Firebase AI Logic Web SDK
+    const ai = getAI(app, { backend: new GoogleAIBackend() });
+    const model = getGenerativeModel(ai, {
+      model: 'gemini-3.8-flash',
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.2,
       },
     });
 
-    const systemPrompt = `You are the CivicResolve Municipal AI Engine for automated civic issue classification and triage.
-Analyze the citizen's report and output strict JSON with this exact schema:
+    const locationStr = typeof location === 'string' ? location : location ? `${location.address}${location.landmark ? ` (Landmark: ${location.landmark})` : ''}` : 'Not provided';
+
+    const systemPrompt = `You are CivicResolve, an AI civic issue triage engine.
+Analyze the citizen grievance and return strict JSON with this exact schema:
 {
   "category": "roads" | "garbage" | "streetlights" | "water" | "drainage" | "encroachment" | "other",
-  "categoryLabel": string,
-  "priority": "low" | "medium" | "high" | "critical",
-  "recommendedDepartment": "Roads & Infrastructure" | "Waste Management & Sanitation" | "Electrical & Street Lighting" | "Water Supply & Sewerage" | "Town Planning & Enforcement" | "Public Health & Environment",
-  "urgencyScore": number (1 to 10),
-  "summary": string (concise 1-2 sentence municipal assessment),
-  "keyActionItems": string[] (3 actionable steps for the municipal field team),
-  "estimatedResolutionTime": string (e.g. "Within 24 hours", "2-3 business days"),
-  "safetyHazard": boolean,
-  "confidenceScore": number (0.0 to 1.0)
+  "priority": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "urgencyScore": number (integer 1-10),
+  "department": "Roads & Infrastructure" | "Waste Management & Sanitation" | "Electrical & Street Lighting" | "Water Supply & Sewerage" | "Town Planning & Enforcement" | "Public Health & Environment",
+  "reason": string (1-2 sentences explaining why this priority and hazard level were assigned),
+  "recommendedAction": string (the primary remediation step required by the municipal field crew),
+  "estimatedResolutionDays": number (positive integer representing expected days to resolve)
 }`;
 
-    const promptText = `Citizen Report:
+    const promptText = `Citizen Grievance Report:
 Title: ${title}
-Description: ${description}`;
+Description: ${description}
+Location: ${locationStr}`;
 
-    let result;
-    if (imageBase64) {
-      // Clean base64 header if present
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      result = await model.generateContent([
-        systemPrompt,
-        promptText,
-        {
-          inlineData: {
-            data: cleanBase64,
-            mimeType: 'image/jpeg',
-          },
-        },
-      ]);
-    } else {
-      result = await model.generateContent([systemPrompt, promptText]);
-    }
+    const generatePromise = (async () => {
+      if (imageBase64) {
+        const mimeMatch = imageBase64.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
+        const mimeType = mimeMatch?.[1] || 'image/jpeg';
+        const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
+        return await model.generateContent([
+          systemPrompt,
+          promptText,
+          { inlineData: { data: cleanBase64, mimeType } },
+        ]);
+      }
+      return await model.generateContent([systemPrompt, promptText]);
+    })();
+
+    const result = await withTimeout(generatePromise, GEMINI_REQUEST_TIMEOUT_MS);
 
     const responseText = result.response.text();
-    const parsed = JSON.parse(responseText);
+    const rawParsed = JSON.parse(responseText);
+
+    // Strict validation
+    const validated = validateGeminiResponse(rawParsed);
+
+    const categoryKey = validated.category as ComplaintCategory;
+    const categoryMeta = CATEGORY_MAP[categoryKey] || CATEGORY_MAP.other;
+    const priorityKey = validated.priority.toLowerCase() as ComplaintPriority;
+    const departmentName = (validated.department as CivicDepartment) || categoryMeta.department;
 
     return {
-      category: parsed.category || 'other',
-      categoryLabel: parsed.categoryLabel || CATEGORY_MAP[parsed.category as ComplaintCategory]?.label || 'General',
-      priority: parsed.priority || 'medium',
-      recommendedDepartment: parsed.recommendedDepartment || 'Roads & Infrastructure',
-      urgencyScore: Number(parsed.urgencyScore) || 5,
-      summary: parsed.summary || 'Analyzed by Google Gemini AI.',
-      keyActionItems: Array.isArray(parsed.keyActionItems) ? parsed.keyActionItems : [
-        'Inspect site within 24 hours',
-        'Deploy designated departmental crew',
-        'Submit post-action photographic verification',
+      category: categoryKey,
+      categoryLabel: categoryMeta.label,
+      priority: priorityKey,
+      recommendedDepartment: departmentName,
+      urgencyScore: validated.urgencyScore,
+      summary: validated.reason,
+      reason: validated.reason,
+      recommendedAction: validated.recommendedAction,
+      estimatedResolutionDays: validated.estimatedResolutionDays,
+      keyActionItems: [
+        validated.recommendedAction,
+        'Deploy ward engineering crew with specialized equipment',
+        'Capture and attach geocoded photographic verification on closure',
       ],
-      estimatedResolutionTime: parsed.estimatedResolutionTime || '2 to 3 business days',
-      safetyHazard: Boolean(parsed.safetyHazard),
-      confidenceScore: Number(parsed.confidenceScore) || 0.95,
-      source: 'google-gemini-live',
+      estimatedResolutionTime: `${validated.estimatedResolutionDays} day${validated.estimatedResolutionDays > 1 ? 's' : ''}`,
+      safetyHazard: validated.urgencyScore >= 8 || validated.priority === 'CRITICAL' || validated.priority === 'HIGH',
+      confidenceScore: 0.96,
+      source: 'firebase-gemini-3.8-flash',
     };
   } catch (error) {
-    console.error('[CivicResolve] Gemini API call failed, reverting to civic rule fallback:', error);
-    const fallback = analyzeCivicIssueOffline(title, description);
-    return fallback;
+    console.warn(
+      '[CivicResolve] Firebase Gemini analysis failed or validation errored. Using the labeled heuristic fallback.',
+      error instanceof Error ? error.name : 'UnknownError'
+    );
+    return analyzeCivicIssueOffline(title, description, location);
   }
 }

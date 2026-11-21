@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useComplaints } from '../context/ComplaintContext';
-import { AIAnalysisCard } from '../components/complaints/AIAnalysisCard';
 import { StatusTimeline } from '../components/complaints/StatusTimeline';
 import { StatusBadge, PriorityBadge, CategoryBadge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -67,12 +66,6 @@ export const ComplaintTrackingPage: React.FC = () => {
     lookupComplaint(searchInput.trim());
   };
 
-  const handleSampleClick = (id: string) => {
-    setSearchInput(id);
-    setSearchParams({ id });
-    lookupComplaint(id);
-  };
-
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopiedLink(true);
@@ -99,13 +92,13 @@ export const ComplaintTrackingPage: React.FC = () => {
       <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-teal-400">
-            Public Civic Ledger
+            My Civic Ledger
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
             Track Grievance Progression
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Enter your unique Complaint ID below to check live field updates, department dispatch notes, and AI resolution metrics.
+            Enter your complaint tracking ID to see its current status and citizen-visible progress updates.
           </p>
         </div>
 
@@ -133,25 +126,6 @@ export const ComplaintTrackingPage: React.FC = () => {
           </Button>
         </form>
 
-        {/* Sample IDs Pill Bar for evaluators */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-          <span className="text-slate-400 font-medium">Quick Demo Samples:</span>
-          {['CR-2025-1042', 'CR-2025-1043', 'CR-2025-1044', 'CR-2025-1045', 'CR-2025-1046'].map(
-            (id) => (
-              <button
-                key={id}
-                onClick={() => handleSampleClick(id)}
-                className={`font-mono px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
-                  activeComplaint?.id === id
-                    ? 'bg-teal-500 text-slate-950 shadow-sm'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                }`}
-              >
-                {id}
-              </button>
-            )
-          )}
-        </div>
       </div>
 
       {/* Not Found Alert */}
@@ -160,7 +134,7 @@ export const ComplaintTrackingPage: React.FC = () => {
           <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
           <h3 className="font-bold text-base">No Complaint Found for ID "{searchInput}"</h3>
           <p className="text-xs text-amber-800 max-w-md mx-auto">
-            Please verify the complaint tracking number. You can click any of the sample tickets above or file a new issue.
+            Please verify the complaint tracking number or file a new issue.
           </p>
           <div className="pt-2">
             <Link to="/report">
@@ -264,21 +238,11 @@ export const ComplaintTrackingPage: React.FC = () => {
             )}
           </div>
 
-          {/* AI Classification & Triage Card */}
-          <div>
-            <div className="mb-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
-                Automated AI Triage Assessment
-              </h3>
-            </div>
-            <AIAnalysisCard analysis={activeComplaint.aiAnalysis} />
-          </div>
-
           {/* Status Timeline */}
           <div>
             <div className="mb-3">
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
-                Audit Trail & Resolution Milestones
+                Complaint Status & Public Updates
               </h3>
             </div>
             <StatusTimeline

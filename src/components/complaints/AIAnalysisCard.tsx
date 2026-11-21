@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Cpu,
   Layers,
+  Wrench,
 } from 'lucide-react';
 
 interface AIAnalysisCardProps {
@@ -20,7 +21,7 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
   analysis,
   isPreview = false,
 }) => {
-  const isGeminiLive = analysis.source === 'google-gemini-live';
+  const isGeminiLive = analysis.source === 'firebase-gemini-3.8-flash';
 
   // Urgency score color
   const getUrgencyColor = (score: number) => {
@@ -40,7 +41,7 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
           </div>
           <div>
             <h4 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-              <span>Gemini Civic Intelligence Assessment</span>
+              <span>AI Assessment · Decision Support</span>
               {isPreview && (
                 <span className="text-[10px] font-semibold uppercase bg-teal-900/80 text-teal-300 px-2 py-0.5 rounded border border-teal-700">
                   Real-time Preview
@@ -48,7 +49,7 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
               )}
             </h4>
             <p className="text-xs text-slate-400">
-              Automated classification, triage priority, and departmental routing
+              Automated classification, hazard evaluation, and departmental routing
             </p>
           </div>
         </div>
@@ -56,14 +57,14 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
         {/* Source attribution tag */}
         <div className="flex items-center gap-1.5 text-xs">
           {isGeminiLive ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-950 border border-teal-600/80 text-teal-300 text-[11px] font-medium">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-950 border border-teal-600/80 text-teal-300 text-[11px] font-medium shadow-xs">
               <Cpu className="w-3 h-3 text-teal-400" />
-              <span>Google Gemini 1.5 Flash (Live)</span>
+              <span>Gemini AI (Firebase AI Logic)</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-amber-300 text-[11px] font-medium">
               <Layers className="w-3 h-3 text-amber-400" />
-              <span>Civic Heuristic Engine (Standard)</span>
+              <span>Offline Heuristic Engine</span>
             </span>
           )}
         </div>
@@ -74,7 +75,7 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
         {/* Category */}
         <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700/60">
           <span className="text-[11px] uppercase tracking-wider text-slate-400 block mb-1">
-            Detected Category
+            Detected Domain
           </span>
           <span className="text-sm font-semibold text-white block truncate">
             {analysis.categoryLabel}
@@ -84,7 +85,7 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
         {/* Priority */}
         <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700/60">
           <span className="text-[11px] uppercase tracking-wider text-slate-400 block mb-1">
-            Evaluated Priority
+            Assessed Priority
           </span>
           <PriorityBadge priority={analysis.priority} size="sm" />
         </div>
@@ -112,7 +113,11 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
           </span>
           <span className="text-xs font-semibold text-slate-200 flex items-center gap-1">
             <Clock className="w-3 h-3 text-slate-400" />
-            <span>{analysis.estimatedResolutionTime}</span>
+            <span>
+              {analysis.estimatedResolutionDays
+                ? `${analysis.estimatedResolutionDays} day${analysis.estimatedResolutionDays > 1 ? 's' : ''}`
+                : analysis.estimatedResolutionTime}
+            </span>
           </span>
         </div>
       </div>
@@ -121,7 +126,7 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
       <div className="py-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Building className="w-4 h-4 text-teal-400 shrink-0" />
-          <span className="text-xs text-slate-400">Assigned Municipal Department:</span>
+          <span className="text-xs text-slate-400">Assigned Department:</span>
           <span className="text-xs font-bold text-teal-300 bg-teal-950/60 px-2.5 py-1 rounded border border-teal-800/80">
             {analysis.recommendedDepartment}
           </span>
@@ -135,22 +140,34 @@ export const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
         )}
       </div>
 
-      {/* AI Summary */}
+      {/* AI Assessment Reason & Remediation */}
       <div className="pt-3.5 space-y-3">
         <div>
           <span className="text-xs font-semibold text-slate-400 block mb-1">
-            Municipal AI Summary:
+            AI Triage Reason & Justification:
           </span>
           <p className="text-xs text-slate-200 leading-relaxed bg-slate-800/40 p-3 rounded-lg border border-slate-800">
-            {analysis.summary}
+            {analysis.reason || analysis.summary}
           </p>
         </div>
+
+        {analysis.recommendedAction && (
+          <div>
+            <span className="text-xs font-semibold text-teal-300 flex items-center gap-1.5 mb-1">
+              <Wrench className="w-3.5 h-3.5 text-teal-400" />
+              <span>Recommended Engineering Action:</span>
+            </span>
+            <div className="text-xs text-slate-200 bg-teal-950/40 p-3 rounded-lg border border-teal-800/50">
+              {analysis.recommendedAction}
+            </div>
+          </div>
+        )}
 
         {/* Action Items for Field Engineers */}
         {analysis.keyActionItems && analysis.keyActionItems.length > 0 && (
           <div>
             <span className="text-xs font-semibold text-slate-400 block mb-1.5">
-              Recommended Work Execution Steps:
+              Protocol Checklist:
             </span>
             <ul className="space-y-1.5">
               {analysis.keyActionItems.map((item, idx) => (

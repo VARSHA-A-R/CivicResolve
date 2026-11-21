@@ -32,6 +32,11 @@ export const ComplaintCard: React.FC<{ complaint: Complaint }> = ({ complaint })
             />
             <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
               <StatusBadge status={complaint.status} size="sm" />
+              {complaint.isDemo && (
+                <span className="text-[10px] font-bold text-slate-700 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded shadow-xs border border-slate-200">
+                  Demo
+                </span>
+              )}
             </div>
             <div className="absolute top-3 right-3">
               <PriorityBadge priority={complaint.priority} size="sm" />
@@ -39,7 +44,14 @@ export const ComplaintCard: React.FC<{ complaint: Complaint }> = ({ complaint })
           </div>
         ) : (
           <div className="p-4 pb-0 flex items-center justify-between">
-            <StatusBadge status={complaint.status} size="sm" />
+            <div className="flex items-center gap-1.5">
+              <StatusBadge status={complaint.status} size="sm" />
+              {complaint.isDemo && (
+                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                  Demo
+                </span>
+              )}
+            </div>
             <PriorityBadge priority={complaint.priority} size="sm" />
           </div>
         )}
@@ -84,9 +96,7 @@ export const ComplaintCard: React.FC<{ complaint: Complaint }> = ({ complaint })
 
       {/* Footer with Track Link */}
       <div className="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
-        <span className="text-xs text-slate-500">
-          Urgency: <strong className="text-slate-800">{complaint.aiAnalysis.urgencyScore}/10</strong>
-        </span>
+        <span className="text-xs text-slate-500">Live status updates</span>
         <Link
           to={`/track?id=${complaint.id}`}
           className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-800 group/link"

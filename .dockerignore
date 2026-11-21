@@ -1,0 +1,17 @@
+.git
+.github
+.vscode
+.idea
+node_modules
+dist
+coverage
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+credentials/

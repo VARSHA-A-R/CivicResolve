@@ -30,6 +30,16 @@ export interface LocationInfo {
   };
 }
 
+export interface RawGeminiResponse {
+  category: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'low' | 'medium' | 'high' | 'critical';
+  urgencyScore: number;
+  department: string;
+  reason: string;
+  recommendedAction: string;
+  estimatedResolutionDays: number;
+}
+
 export interface AIAnalysisResult {
   category: ComplaintCategory;
   categoryLabel: string;
@@ -37,11 +47,14 @@ export interface AIAnalysisResult {
   recommendedDepartment: CivicDepartment;
   urgencyScore: number; // 1 to 10
   summary: string;
+  reason?: string;
+  recommendedAction?: string;
+  estimatedResolutionDays?: number;
   keyActionItems: string[];
   estimatedResolutionTime: string;
   safetyHazard: boolean;
   confidenceScore: number; // 0.0 to 1.0
-  source: 'google-gemini-live' | 'civic-rule-engine-fallback';
+  source: 'firebase-gemini-3.8-flash' | 'civic-rule-engine-fallback';
 }
 
 export interface ComplaintTimelineEvent {
@@ -51,6 +64,14 @@ export interface ComplaintTimelineEvent {
   timestamp: string;
   actor: string;
   actorRole: 'citizen' | 'ai_system' | 'officer' | 'field_worker';
+  note: string;
+}
+
+export interface OfficerNote {
+  id: string;
+  actorUid: string;
+  actorName: string;
+  timestamp: string;
   note: string;
 }
 
@@ -65,16 +86,27 @@ export interface Complaint {
   category: ComplaintCategory;
   department: CivicDepartment;
   citizenName: string;
-  citizenContact: string;
+  citizenContact?: string;
   citizenEmail?: string;
+  citizenUid?: string;
   createdAt: string;
   updatedAt: string;
-  aiAnalysis: AIAnalysisResult;
+  aiAnalysis?: AIAnalysisResult;
+  officerNotes?: OfficerNote[];
   timeline: ComplaintTimelineEvent[];
   assignedOfficer?: string;
   resolutionNotes?: string;
   resolvedAt?: string;
+  isDemo?: boolean;
 }
+
+export type ComplaintSubmission = Omit<
+  Complaint,
+  'id' | 'createdAt' | 'updatedAt' | 'timeline' | 'aiAnalysis' | 'citizenContact' | 'officerNotes'
+> & {
+  aiAnalysis: AIAnalysisResult;
+  citizenContact: string;
+};
 
 export interface UserProfile {
   uid: string;
@@ -83,6 +115,20 @@ export interface UserProfile {
   role: 'citizen' | 'admin';
   department?: CivicDepartment;
   phoneNumber?: string;
+  isVerifiedOfficer?: boolean;
+  profileComplete?: boolean;
+  profileError?: string;
+}
+
+export interface OfficerApplication {
+  uid: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  department: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
 }
 
 export interface CivicStats {

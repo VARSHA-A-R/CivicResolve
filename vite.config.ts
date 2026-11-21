@@ -9,12 +9,19 @@ export default defineConfig({
     host: true,
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-          gemini: ['@google/generative-ai'],
+          firebase: [
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/storage',
+            'firebase/app-check',
+          ],
+          firebaseAi: ['firebase/ai'],
           icons: ['lucide-react'],
         },
       },

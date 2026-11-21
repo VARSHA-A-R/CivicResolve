@@ -140,7 +140,7 @@ export const CitizenDashboard: React.FC = () => {
               {stats?.resolvedCount ?? complaints.filter((c) => c.status === 'resolved').length}
             </span>
             <span className="text-xs text-emerald-700 font-medium">
-              {stats?.resolutionRate ? `${stats.resolutionRate}% rate` : 'Verified'}
+              {stats ? `${stats.resolutionRate}% rate` : '—'}
             </span>
           </div>
         </div>

@@ -3,13 +3,11 @@ import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { isFirebaseConfigured } from '../../services/firebase';
-import { isGeminiConfigured } from '../../services/geminiService';
 import { Sparkles, Database, X } from 'lucide-react';
 
 export const Layout: React.FC = () => {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const firebaseLive = isFirebaseConfigured();
-  const geminiLive = isGeminiConfigured();
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
@@ -25,16 +23,16 @@ export const Layout: React.FC = () => {
                 System Status:
               </span>
 
-              {/* Gemini Status */}
+              {/* Gemini / Firebase AI Logic Status */}
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-teal-400" />
                 <span>
-                  Gemini AI:{' '}
-                  {geminiLive ? (
-                    <span className="text-teal-400 font-medium">Live Google GenAI Connected</span>
+                  AI Logic:{' '}
+                  {firebaseLive ? (
+                    <span className="text-teal-400 font-medium">Firebase AI Logic (gemini-3.8-flash) Connected</span>
                   ) : (
                     <span className="text-amber-300 font-medium">
-                      Intelligent Heuristic Fallback Active (Provide VITE_GEMINI_API_KEY in .env for live)
+                      Intelligent Heuristic Fallback Active (Provide VITE_FIREBASE_* in .env to connect)
                     </span>
                   )}
                 </span>
@@ -46,10 +44,10 @@ export const Layout: React.FC = () => {
                 <span>
                   Firebase:{' '}
                   {firebaseLive ? (
-                    <span className="text-emerald-400 font-medium">Cloud Firestore Connected</span>
+                    <span className="text-emerald-400 font-medium">Cloud Firestore & Storage Connected</span>
                   ) : (
                     <span className="text-slate-400 font-medium">
-                      Local Offline Store Active (Provide VITE_FIREBASE_* in .env for live)
+                      Local Offline Store Active
                     </span>
                   )}
                 </span>

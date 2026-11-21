@@ -6,8 +6,6 @@ import {
   ArrowRight,
   Camera,
   Cpu,
-  Truck,
-  CheckCircle2,
   Clock,
   ShieldCheck,
   Building2,
@@ -27,25 +25,21 @@ export const LandingPage: React.FC = () => {
       icon: <Construction className="w-6 h-6 text-amber-600" />,
       title: 'Potholes & Broken Roads',
       description: 'Report road craters, broken pavers, and dangerous highway hazards.',
-      sla: 'SLA: 24h - 48h',
     },
     {
       icon: <Trash2 className="w-6 h-6 text-emerald-600" />,
       title: 'Garbage & Sanitation',
       description: 'Overflowing bins, illegal dumping spots, and biohazard clearances.',
-      sla: 'SLA: 12h - 24h',
     },
     {
       icon: <Lightbulb className="w-6 h-6 text-yellow-600" />,
       title: 'Defective Streetlights',
       description: 'Dark corridors, flickering bulbs, and hazardous exposed wires.',
-      sla: 'SLA: 24h - 72h',
     },
     {
       icon: <Droplets className="w-6 h-6 text-cyan-600" />,
       title: 'Water Leakage & Mains',
       description: 'Burst potable water mains, low pressure, and sewage contamination.',
-      sla: 'SLA: 6h - 24h',
     },
   ];
 
@@ -63,22 +57,21 @@ export const LandingPage: React.FC = () => {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                <span>Google Gemini AI Municipal Intelligence</span>
+                <span>Citizen reporting and complaint tracking</span>
               </div>
 
               {/* Main Headline */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-                Fixing our city's civic issues,{' '}
+                Report local civic issues and follow their status,{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-300 to-teal-200">
-                  powered by Gemini AI.
+                  with AI-assisted triage.
                 </span>
               </h1>
 
               {/* Subtitle */}
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
-                Report potholes, overflowing garbage, and broken streetlights in seconds.
-                Our multimodal Gemini AI classifies the issue, evaluates public hazard severity,
-                and routes work orders directly to responsible municipal engineers.
+                Submit an issue with its location and details. AI classification can help organize reports;
+                authorized municipal officers review complaints and provide status updates.
               </p>
 
               {/* Action Buttons */}
@@ -99,7 +92,7 @@ export const LandingPage: React.FC = () => {
                     variant="outline"
                     size="lg"
                     leftIcon={<Search className="w-4 h-4 text-slate-300" />}
-                    className="w-full sm:w-auto bg-slate-800/80 border-slate-700 text-white hover:bg-slate-700/80"
+                    className="w-full sm:w-auto"
                   >
                     Track Complaint Status
                   </Button>
@@ -110,79 +103,64 @@ export const LandingPage: React.FC = () => {
               <div className="pt-6 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-400">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-teal-400" />
-                  <span>Verified Municipal Authority</span>
+                  <span>Officer access is verified</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-teal-400" />
-                  <span>Real-time Public Audit Trail</span>
+                  <span>Complaint status can be tracked</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-teal-400" />
-                  <span>Zero Bureaucracy Bottleneck</span>
+                  <span>Officers make final decisions</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Interactive AI Simulation Card */}
+            {/* Right Column: Report handling overview */}
             <div className="lg:col-span-5">
               <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl relative">
-                {/* Floating pill */}
-                <div className="absolute -top-3 right-6 bg-teal-500 text-slate-950 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
-                  Live AI Workflow
-                </div>
-
                 <div className="space-y-4 text-left">
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-700">
-                    <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-400 font-mono">CR-2025-1042</div>
-                      <div className="text-sm font-bold text-white">Main St. Road Cavitation</div>
-                    </div>
+                  <div className="pb-3 border-b border-slate-700">
+                    <div className="text-sm font-bold text-white">From report to review</div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Each submission is saved with a tracking ID after the report is accepted.
+                    </p>
                   </div>
-
-                  {/* AI Triage Steps */}
                   <div className="space-y-2.5 text-xs">
                     <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-700 flex items-start gap-2.5">
-                      <Cpu className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                      <Camera className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-teal-300">Google Gemini Multimodal Analysis</div>
+                        <div className="font-semibold text-teal-300">Citizen report</div>
                         <div className="text-slate-400 text-[11px] mt-0.5">
-                          Identified 45cm deep pothole on high-transit road. Priority elevated to Critical.
+                          Add a description, location, and optional photograph.
                         </div>
                       </div>
                     </div>
 
                     <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-700 flex items-start gap-2.5">
-                      <Truck className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                      <Cpu className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-blue-300">Auto-Dispatched Work Order</div>
+                        <div className="font-semibold text-blue-300">AI-supported classification</div>
                         <div className="text-slate-400 text-[11px] mt-0.5">
-                          Assigned to Roads & Infrastructure Division, Ward #14. SLA: 24h.
+                          Gemini classification or an offline heuristic may suggest a category and priority.
                         </div>
                       </div>
                     </div>
 
                     <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-700 flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <Building2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-emerald-300">Transparent Resolution Verification</div>
+                        <div className="font-semibold text-emerald-300">Municipal review and updates</div>
                         <div className="text-slate-400 text-[11px] mt-0.5">
-                          Field engineer posts geo-tagged photographic evidence upon completion.
+                          Authorized officers make decisions and publish complaint status updates.
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="pt-2">
-                    <Link
-                      to="/track?id=CR-2025-1042"
-                      className="block text-center text-xs font-semibold text-teal-400 hover:text-teal-300 transition py-1.5 bg-slate-900 rounded-lg border border-slate-700"
-                    >
-                      View Live Dossier for CR-2025-1042 →
-                    </Link>
-                  </div>
+                  <p className="pt-1 text-[11px] leading-relaxed text-slate-400">
+                    AI results are decision support only. No response time or resolution is guaranteed by this portal.
+                  </p>
                 </div>
               </div>
             </div>
@@ -197,7 +175,7 @@ export const LandingPage: React.FC = () => {
             {/* Stat 1 */}
             <div className="pt-4 md:pt-0">
               <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                {stats?.totalComplaints ? stats.totalComplaints + 12450 : '12,450+'}
+                {stats?.totalComplaints ?? 0}
               </div>
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">
                 Issues Handled
@@ -207,7 +185,7 @@ export const LandingPage: React.FC = () => {
             {/* Stat 2 */}
             <div className="pt-4 md:pt-0">
               <div className="text-3xl sm:text-4xl font-extrabold text-teal-600 tracking-tight">
-                {stats?.resolutionRate ? `${stats.resolutionRate}%` : '94.2%'}
+                {stats ? `${stats.resolutionRate}%` : '0%'}
               </div>
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">
                 Resolution Rate
@@ -217,7 +195,7 @@ export const LandingPage: React.FC = () => {
             {/* Stat 3 */}
             <div className="pt-4 md:pt-0">
               <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                {stats?.avgResolutionDays ? `${stats.avgResolutionDays} Days` : '2.4 Days'}
+                {stats ? `${stats.avgResolutionDays} Days` : '—'}
               </div>
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">
                 Average Resolution Time
@@ -247,7 +225,7 @@ export const LandingPage: React.FC = () => {
             How CivicResolve Works
           </h2>
           <p className="mt-3 text-base text-slate-600">
-            From citizen camera snapshot to city municipal dispatch in under 60 seconds.
+            Submit a report, receive a tracking ID, and follow updates from municipal staff.
           </p>
         </div>
 
@@ -259,7 +237,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <h3 className="font-bold text-slate-900 text-base mb-2">Snap & Describe</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Take a quick photo of the civic issue or write a brief 1-sentence note. Add your location or use auto-GPS.
+              Describe the issue and provide a street address or use your device location.
             </p>
           </div>
 
@@ -268,9 +246,9 @@ export const LandingPage: React.FC = () => {
             <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto mb-4 font-bold text-lg border border-teal-100 group-hover:scale-110 transition-transform">
               2
             </div>
-            <h3 className="font-bold text-slate-900 text-base mb-2">Gemini AI Triage</h3>
+            <h3 className="font-bold text-slate-900 text-base mb-2">AI-Assisted Triage</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Google Gemini evaluates safety hazards, categorizes the grievance, and assigns urgency ratings from 1 to 10.
+              Gemini or the offline heuristic can suggest a category and priority for officer review.
             </p>
           </div>
 
@@ -279,9 +257,9 @@ export const LandingPage: React.FC = () => {
             <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto mb-4 font-bold text-lg border border-teal-100 group-hover:scale-110 transition-transform">
               3
             </div>
-            <h3 className="font-bold text-slate-900 text-base mb-2">Auto Ward Dispatch</h3>
+            <h3 className="font-bold text-slate-900 text-base mb-2">Officer Review</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              The ticket is dispatched immediately to the designated municipal department with actionable instructions.
+              Authorized municipal officers review reports and decide what action to take.
             </p>
           </div>
 
@@ -292,8 +270,48 @@ export const LandingPage: React.FC = () => {
             </div>
             <h3 className="font-bold text-slate-900 text-base mb-2">Track & Verify</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Citizens track live status from Reported → In Progress → Resolved with verified before/after photographic proof.
+              View the current status and citizen-visible updates for a submitted complaint.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Architecture and data handling */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 sm:p-10">
+          <div className="max-w-3xl">
+            <span className="text-xs font-bold uppercase tracking-wider text-teal-800">Platform overview</span>
+            <h2 className="mt-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">
+              Built around authenticated reporting and human review
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              CivicResolve uses React and TypeScript in the browser, Firebase Authentication for accounts,
+              Cloud Firestore for complaint records, and Firebase Storage when available for photographs.
+              AI classification is optional decision support; officers retain responsibility for final actions.
+            </p>
+          </div>
+          <div className="mt-7 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <ShieldCheck className="h-5 w-5 text-teal-700" />
+              <h3 className="mt-2 text-sm font-bold text-slate-900">Account access</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Firebase Authentication and server-side Firestore rules protect account and officer data.
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <Cpu className="h-5 w-5 text-teal-700" />
+              <h3 className="mt-2 text-sm font-bold text-slate-900">AI decision support</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Gemini assessment can fall back to the labeled offline heuristic when unavailable.
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <Building2 className="h-5 w-5 text-teal-700" />
+              <h3 className="mt-2 text-sm font-bold text-slate-900">Officer decisions</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Only accounts provisioned in the officer registry can access officer tools.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -324,8 +342,8 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <h3 className="font-bold text-sm text-white mb-1">{cat.title}</h3>
                 <p className="text-xs text-slate-400 mb-3 leading-relaxed">{cat.description}</p>
-                <span className="inline-block text-[11px] font-mono font-medium text-teal-300 bg-teal-950 px-2 py-0.5 rounded border border-teal-800">
-                  {cat.sla}
+                <span className="inline-block text-[11px] font-medium text-teal-300 bg-teal-950 px-2 py-0.5 rounded border border-teal-800">
+                  Common report type
                 </span>
               </div>
             ))}
@@ -340,14 +358,14 @@ export const LandingPage: React.FC = () => {
             Notice a civic issue in your neighborhood?
           </h2>
           <p className="text-base text-teal-100 max-w-2xl mx-auto mb-8">
-            Don't wait for potholes to cause accidents or garbage to spread disease. File a verified report in 60 seconds.
+            Submit a civic issue report with its location and follow updates using its tracking ID.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link to="/report">
               <Button
                 variant="primary"
                 size="lg"
-                className="bg-white text-slate-900 hover:bg-slate-100 font-bold"
+                className="font-bold"
               >
                 Report an Issue Now
               </Button>
@@ -356,7 +374,7 @@ export const LandingPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="lg"
-                className="bg-teal-800/60 border-teal-500 text-white hover:bg-teal-800"
+                className="font-bold"
               >
                 Browse Citizen Dashboard
               </Button>

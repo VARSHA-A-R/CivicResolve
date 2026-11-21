@@ -19,6 +19,7 @@ export const AdminDashboard: React.FC = () => {
     complaints,
     stats,
     loading,
+    complaintError,
     filter,
     setFilter,
     resetFilter,
@@ -46,7 +47,7 @@ export const AdminDashboard: React.FC = () => {
       `"${c.department}"`,
       c.status,
       `"${c.location.address.replace(/"/g, '""')}"`,
-      c.aiAnalysis.urgencyScore,
+      c.aiAnalysis?.urgencyScore ?? '',
       c.createdAt,
     ]);
 
@@ -73,14 +74,14 @@ export const AdminDashboard: React.FC = () => {
               Municipal Operations Desk
             </span>
             <span className="text-xs text-slate-500 font-medium">
-              Administrative Control Console
+              Complaint Management
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Municipal Work Order Command
+            Officer Complaint Management
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Supervise AI-routed civic grievances, assign field crews, and inspect photographic resolution proofs.
+            Review citizen-submitted complaints, inspect saved AI assessments, and publish status updates.
           </p>
         </div>
 
@@ -115,7 +116,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-slate-900">
-              {stats?.totalComplaints || complaints.length}
+              {stats?.totalComplaints ?? complaints.length}
             </span>
             <span className="text-xs text-slate-500">all wards</span>
           </div>
@@ -149,17 +150,17 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Resolution Rate */}
+        {/* Resolved complaints */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-civic-card">
           <div className="flex items-center justify-between text-emerald-600">
-            <span className="text-xs font-bold uppercase tracking-wider">Resolution Rate</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Resolved</span>
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-emerald-600">
-              {stats?.resolutionRate ? `${stats.resolutionRate}%` : '85.5%'}
+              {stats?.resolvedCount ?? complaints.filter((c) => c.status === 'resolved').length}
             </span>
-            <span className="text-xs text-emerald-700 font-medium">Avg 2.4 days</span>
+            <span className="text-xs text-emerald-700 font-medium">resolved complaints</span>
           </div>
         </div>
       </div>
@@ -170,7 +171,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-teal-700" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Filter Work Orders ({filteredComplaints.length} matching)
+              Filter Complaints ({filteredComplaints.length} matching)
             </h3>
           </div>
           {(filter.category !== 'all' ||
@@ -184,6 +185,29 @@ export const AdminDashboard: React.FC = () => {
               Reset All Filters
             </button>
           )}
+        </div>
+
+        <div className="flex flex-wrap gap-2" aria-label="Filter complaints by status">
+          {[
+            { value: 'all', label: 'All Complaints', count: complaints.length },
+            { value: 'reported', label: 'Pending Review', count: complaints.filter((c) => c.status === 'reported').length },
+            { value: 'in_progress', label: 'In Progress', count: complaints.filter((c) => c.status === 'in_progress').length },
+            { value: 'resolved', label: 'Resolved', count: complaints.filter((c) => c.status === 'resolved').length },
+          ].map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => setFilter((prev) => ({ ...prev, status: item.value }))}
+              aria-pressed={filter.status === item.value}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                filter.status === item.value
+                  ? 'bg-teal-700 text-white'
+                  : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {item.label} ({item.count})
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -249,11 +273,21 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Interactive Table */}
-      <ComplaintTable
-        complaints={filteredComplaints}
-        onUpdateStatus={updateComplaintStatus}
-      />
+      {complaintError && (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          Could not load the live officer complaint feed: {complaintError}
+        </div>
+      )}
+      {loading ? (
+        <div role="status" className="py-12 text-center text-sm text-slate-500">
+          Loading complaints from Firestore...
+        </div>
+      ) : (
+        <ComplaintTable
+          complaints={filteredComplaints}
+          onUpdateStatus={updateComplaintStatus}
+        />
+      )}
     </div>
   );
 };

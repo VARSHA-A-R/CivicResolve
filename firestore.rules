@@ -1,43 +1,175 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+
+    // Authentication Helper
     function isAuthenticated() {
-      return request.auth != null;
+      return request.auth != null && request.auth.uid != null;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email.matches('.*admin.*') ||
-        request.auth.token.email.matches('.*officer.*')
-      );
+    // Officer access is granted only by the server-managed /officers registry.
+    function isVerifiedOfficer() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/officers/$(request.auth.uid));
     }
 
     // Complaints Collection
     match /complaints/{complaintId} {
-      // Anyone can read complaints for civic transparency & live tracking
-      allow read: if true;
+      allow read: if isAuthenticated()
+        && (resource.data.citizenUid == request.auth.uid || isVerifiedOfficer());
 
-      // Anyone (or authenticated citizens) can file a new complaint with valid schema
-      allow create: if request.resource.data.keys().hasAll([
-        'id', 'title', 'description', 'location', 'status', 'priority', 'category', 'department'
-      ]) && request.resource.data.title.size() >= 3
-         && request.resource.data.description.size() >= 5;
+      // Only authenticated users can submit complaints
+      // Must include valid schema, non-empty fields, and bind author UID to authenticated token
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasAll([
+          'id', 'title', 'description', 'location', 'status', 'priority', 'category',
+          'department', 'citizenName', 'citizenUid', 'createdAt', 'updatedAt', 'timeline'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'id', 'title', 'description', 'location', 'imageUrl', 'status', 'priority',
+          'category', 'department', 'citizenName', 'citizenUid', 'createdAt',
+          'updatedAt', 'isDemo', 'timeline'
+        ])
+        && !('aiAnalysis' in request.resource.data)
+        && !('citizenContact' in request.resource.data)
+        && request.resource.data.id == complaintId
+        && request.resource.data.citizenUid == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() >= 5
+        && request.resource.data.description is string && request.resource.data.description.size() >= 10
+        && request.resource.data.citizenName is string
+        && request.resource.data.timeline is list
+        && (!('imageUrl' in request.resource.data)
+          || (request.resource.data.imageUrl is string
+            && request.resource.data.imageUrl.size() <= 716800))
+        && request.resource.data.status == 'reported';
 
-      // Only municipal officials can update status, timeline notes, and department assignments
-      allow update: if isAdmin() || (
-        // Allow updating timeline and status when transitioning
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'timeline', 'assignedOfficer', 'resolutionNotes', 'resolvedAt'])
-      );
+      // Status updates, timeline entries, and assignments are STRICTLY restricted to verified officers
+      // Ordinary citizens CANNOT update status or close complaints
+      allow update: if isVerifiedOfficer()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'timeline', 'assignedOfficer', 'resolutionNotes', 'resolvedAt'
+        ])
+        && request.resource.data.status in ['reported', 'in_progress', 'resolved', 'rejected']
+        && request.resource.data.updatedAt is string
+        && request.resource.data.timeline is list
+        && request.resource.data.timeline.size() == resource.data.timeline.size() + 1
+        && request.resource.data.timeline[request.resource.data.timeline.size() - 1]['status'] == request.resource.data.status
+        && request.resource.data.timeline[request.resource.data.timeline.size() - 1]['actorRole'] == 'officer'
+        && request.resource.data.timeline[request.resource.data.timeline.size() - 1]['timestamp'] == request.resource.data.updatedAt
+        && request.resource.data.timeline[request.resource.data.timeline.size() - 1]['note'] is string
+        && request.resource.data.timeline[request.resource.data.timeline.size() - 1]['note'].size() > 0
+        && request.resource.data.timeline[request.resource.data.timeline.size() - 1]['note'].size() <= 2000;
 
-      // Prevent deletion to preserve public audit ledger
+      // Deletion is prohibited to maintain an immutable public audit ledger
       allow delete: if false;
+    }
+
+    // AI analysis and citizen contact details are officer-only.
+    match /officerAssessments/{complaintId} {
+      allow read: if isVerifiedOfficer();
+      allow create: if isVerifiedOfficer()
+        && request.resource.data.complaintId == complaintId
+        && request.resource.data.citizenUid
+          == get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenUid
+        && request.resource.data.keys().hasAll([
+          'complaintId', 'citizenUid', 'officerNotes', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'complaintId', 'citizenUid', 'officerNotes', 'updatedAt'
+        ])
+        && request.resource.data.officerNotes is list
+        && request.resource.data.officerNotes.size() == 1
+        && request.resource.data.officerNotes[0]['actorUid'] == request.auth.uid
+        && request.resource.data.officerNotes[0]['timestamp'] == request.resource.data.updatedAt
+        && request.resource.data.officerNotes[0]['note'] is string
+        && request.resource.data.officerNotes[0]['note'].size() > 0
+        && request.resource.data.officerNotes[0]['note'].size() <= 2000;
+      allow update: if isVerifiedOfficer()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officerNotes', 'updatedAt'])
+        && request.resource.data.officerNotes is list
+        && request.resource.data.officerNotes.size() <= 100
+        && request.resource.data.officerNotes.size()
+          == (resource.data.keys().hasAny(['officerNotes']) ? resource.data.officerNotes.size() : 0) + 1
+        && request.resource.data.updatedAt is string
+        && request.resource.data.officerNotes[request.resource.data.officerNotes.size() - 1]['actorUid'] == request.auth.uid
+        && request.resource.data.officerNotes[request.resource.data.officerNotes.size() - 1]['timestamp'] == request.resource.data.updatedAt
+        && request.resource.data.officerNotes[request.resource.data.officerNotes.size() - 1]['note'] is string
+        && request.resource.data.officerNotes[request.resource.data.officerNotes.size() - 1]['note'].size() > 0
+        && request.resource.data.officerNotes[request.resource.data.officerNotes.size() - 1]['note'].size() <= 2000;
+      allow delete: if false;
+    }
+
+    // Verified Officers Registry
+    // Officers can read only their own authorization record.
+    // Write: LOCKED to client apps (only manageable via Firebase Console or Firebase Admin SDK)
+    match /officers/{officerId} {
+      allow read: if isAuthenticated() && request.auth.uid == officerId;
+      allow write: if false;
     }
 
     // User Profiles
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'phoneNumber', 'role', 'createdAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 2
+        && request.resource.data.displayName.size() <= 120
+        && request.resource.data.createdAt is string
+        && (!('phoneNumber' in request.resource.data)
+          || (request.resource.data.phoneNumber is string
+            && request.resource.data.phoneNumber.size() >= 7
+            && request.resource.data.phoneNumber.size() <= 16))
+        && request.resource.data.role == 'citizen'
+        && !('isVerifiedOfficer' in request.resource.data);
+      allow update: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'phoneNumber'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 2
+        && request.resource.data.displayName.size() <= 120
+        && (!('phoneNumber' in request.resource.data)
+          || (request.resource.data.phoneNumber is string
+            && request.resource.data.phoneNumber.size() >= 7
+            && request.resource.data.phoneNumber.size() <= 16));
+      allow delete: if false;
+    }
+
+    // Applicant data is private. Client-created applications are always pending;
+    // approval/rejection and officer provisioning require trusted administration.
+    match /officerApplications/{applicantId} {
+      allow read: if isAuthenticated() && request.auth.uid == applicantId;
+      allow create: if isAuthenticated()
+        && request.auth.uid == applicantId
+        && request.resource.data.keys().hasAll([
+          'uid', 'fullName', 'email', 'phoneNumber', 'department', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'fullName', 'email', 'phoneNumber', 'department', 'reason', 'status', 'createdAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() >= 2
+        && request.resource.data.fullName.size() <= 120
+        && request.resource.data.phoneNumber is string
+        && request.resource.data.phoneNumber.size() >= 7
+        && request.resource.data.phoneNumber.size() <= 16
+        && request.resource.data.department is string
+        && request.resource.data.department.size() >= 2
+        && request.resource.data.department.size() <= 120
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 20
+        && request.resource.data.reason.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is string;
+      allow update, delete: if false;
     }
   }
 }

@@ -1,130 +1,185 @@
-# CivicResolve — AI-Powered Civic Issue Reporting & Management
+# CivicResolve
 
-**CivicResolve** is a civic-tech SaaS platform built for a Google Hackathon that bridges the gap between citizens and municipal authorities. By leveraging **Google Gemini AI**, the platform automatically triages citizen complaints (potholes, garbage overflow, streetlight failures, water main leaks, drainage collapses), evaluates public safety hazards, and dispatches actionable work orders to responsible municipal engineering teams with live, transparent tracking.
+CivicResolve is a civic issue reporting and management portal that connects residents with municipal officers. Citizens submit and track local issues; authorized officers review the Firestore complaint queue and publish status updates.
 
----
+## The problem
 
-## 🌟 Key Features
+Civic issues such as damaged roads, water leaks, overflowing waste, and broken streetlights are often reported through disconnected channels. Residents have little visibility into whether an issue was received or acted on, while municipal teams lack a single, searchable queue.
 
-1. **AI-Powered Grievance Triage (Google Gemini 1.5 Flash)**
-   - Automatic classification into civic infrastructure domains (Roads, Waste, Lighting, Water, Drainage).
-   - Real-time hazard detection and urgency rating ($1$ to $10$).
-   - Automated routing to responsible municipal department.
-   - Recommended field action checklist for municipal crews.
-   - Live AI preview as the citizen types their grievance.
+## The solution
 
-2. **Citizen Portal**
-   - Overview metrics of local ward issues (Total, Pending, In Progress, Resolved).
-   - Frictionless issue filing with photo evidence and browser geolocation assistance.
-   - Status tracking with immutable timestamps and SLA targets.
+CivicResolve provides a shared workflow for submitting, classifying, routing, and tracking reports. Firebase Authentication identifies users, Firestore stores complaints and status history, and AI-assisted classification offers decision support. Officers retain responsibility for decisions and status changes.
 
-3. **Public Audit & Tracking Ledger**
-   - Instant search by unique Complaint ID (e.g. `CR-2025-1042`).
-   - Interactive 3-stage lifecycle progression: **Reported → In Progress → Resolved**.
-   - Chronological audit trail showing actor roles (`citizen`, `ai_system`, `officer`, `field_worker`).
+## Features
 
-4. **Municipal Command Dashboard (Admin)**
-   - Live queue of active ward work orders.
-   - Multi-dimensional filters (Category, Priority, Status, Search).
-   - Work order inspection and status update controls with official engineer notes.
-   - One-click CSV export for municipal audits.
+- Citizen and officer login portals using Firebase email/password authentication.
+- Citizen registration and profile recovery.
+- Complaint submission with location details, optional photo, and browser location assistance.
+- Tracking IDs are returned only after the complaint is saved.
+- Citizen-visible status timeline and real-time complaint updates.
+- Officer dashboard populated from Firestore, with category, priority, status, and text filters.
+- Dashboard counts and priority cards derived from the Firestore complaint feed.
+- Officer-only status updates and private notes.
+- Gemini classification with an explicitly labeled offline heuristic fallback.
+- CSV export for officer review.
+- Firestore and Storage rules restrict access by authenticated identity and verified officer status.
 
----
+AI output is advisory. Officers make final decisions. Citizen submission writes the public complaint record; it does not write private officer assessments.
 
-## 🛠️ Technology Stack
+## Workflows
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS (Deep navy, clean typography with Inter, subtle civic shadows)
-- **Icons**: Lucide React
-- **AI Engine**: `@google/generative-ai` (Google Gemini 1.5 Flash) with resilient offline heuristic fallback
-- **Backend & Cloud**:
-  - Firebase Authentication
-  - Cloud Firestore
-  - Firebase Storage
-  - Firebase Hosting
-- **Testing**: Vitest + React Testing Library + Jest-DOM
+### Citizen
 
----
+1. Select **Citizen Login** and register or sign in.
+2. Submit the issue title, description, address, and optional location/photo.
+3. Receive a tracking ID after Firestore confirms the complaint write.
+4. Open **My Civic Ledger** to follow officer-published status updates.
 
-## 🚀 Getting Started
+### Officer
 
-### 1. Prerequisites
-- Node.js (v18+ or v20+)
-- npm or pnpm
+1. Sign in through **Officer Login** with a provisioned Firebase Authentication account.
+2. The app verifies access by checking for `/officers/{uid}`.
+3. Review complaints loaded from Firestore and filter by domain, priority, or status.
+4. Publish citizen-visible status updates and keep private officer notes separate.
 
-### 2. Installation
-```bash
-npm install
+Officer access is not self-granted. An authorized administrator provisions the `/officers/{uid}` document through Firebase Console or a trusted administrative process. Public users cannot create or approve officer records.
+
+## Technology
+
+- React 18, TypeScript, Vite
+- Tailwind CSS and Lucide React
+- Firebase Authentication, Cloud Firestore, Firebase Storage, Firebase AI Logic
+- Vitest, React Testing Library, Firestore Emulator rules tests
+- Docker multi-stage build and Nginx static hosting
+
+## Local development
+
+### Requirements
+
+- Node.js 20 or newer and npm
+- A Firebase project for live authentication and Firestore functionality
+
+Install dependencies:
+
+```powershell
+npm ci
+Copy-Item .env.example .env
 ```
 
-### 3. Environment Configuration
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
+Set the Firebase web app values in `.env`:
+
+```dotenv
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+VITE_RECAPTCHA_ENTERPRISE_SITE_KEY=
+VITE_GOOGLE_MAPS_API_KEY=
 ```
 
-Add your credentials:
-```env
-# Firebase Configuration
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+The minimum required values are `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Storage, App Check, and Maps features require their corresponding configuration.
 
-# Google Gemini API Key
-VITE_GEMINI_API_KEY=your_gemini_api_key
-```
+Run the app and checks:
 
-> **Note**: Even if Firebase or Gemini API keys are omitted during evaluation, CivicResolve includes a fully-functional local persistence layer and a deterministic civic rule engine. Everything works out-of-the-box!
-
-### 4. Running the Application
-```bash
+```powershell
 npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 5. Running Tests
-```bash
 npm test
-```
-
-### 6. Production Build
-```bash
 npm run build
 ```
 
----
+The development server listens on port `3000`. Firestore rules emulator tests use `npm run test:rules` and require Java 21 or newer.
 
-## 🏛️ Architecture & Folder Structure
+## Firebase configuration and security
 
+1. Create a Firebase Web App and configure Email/Password sign-in.
+2. Create the Firestore database and enable Storage if photo uploads are needed.
+3. Set the Firebase web app values in the local `.env`.
+4. Review the project ID before publishing rules. Deploy rules to the intended project:
+
+```powershell
+firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
+firebase deploy --only storage --project YOUR_FIREBASE_PROJECT_ID
 ```
-CivicResolve/
-├── firestore.rules          # Production-grade Firestore security rules
-├── storage.rules            # Firebase Storage file validation rules
-├── firebase.json            # Firebase Hosting & emulator configurations
-├── src/
-│   ├── types/               # TypeScript interfaces & domain models
-│   ├── services/
-│   │   ├── firebase.ts      # Firebase SDK client initialization
-│   │   ├── geminiService.ts # Google Gemini AI & heuristic fallback engine
-│   │   ├── complaintService.ts # Dual-mode Firestore + localStorage service
-│   │   └── mockData.ts      # Seed civic complaints
-│   ├── context/
-│   │   ├── AuthContext.tsx  # Citizen / Municipal Officer authentication
-│   │   └── ComplaintContext.tsx # Central grievance state & filters
-│   ├── components/
-│   │   ├── layout/          # Navbar, Footer, Shell Layout
-│   │   ├── ui/              # Button, Card, Badge, Modal
-│   │   └── complaints/      # StatusTimeline, AIAnalysisCard, ComplaintCard, ComplaintTable
-│   ├── pages/
-│   │   ├── LandingPage.tsx
-│   │   ├── CitizenDashboard.tsx
-│   │   ├── ReportIssuePage.tsx
-│   │   ├── ComplaintTrackingPage.tsx
-│   │   └── AdminDashboard.tsx
-│   ├── test/                # Unit & component test suites
-│   ├── App.tsx              # React Router v6 routing table
-│   └── main.tsx             # Application bootstrap
+
+5. In Firebase Console, provision each verified officer at `/officers/{uid}` using the UID of that person's Firebase Authentication account.
+
+`VITE_*` values are compiled into browser JavaScript and are public client configuration, not server secrets. Restrict Firebase and Maps API keys according to their provider guidance. Never put service-account keys, Firebase Admin credentials, private keys, or passwords in `VITE_*` variables, source control, or Docker build arguments. `VITE_APPCHECK_DEBUG_TOKEN` is for local debugging only and is deliberately excluded from the production Docker build.
+
+## Production Docker image
+
+The multi-stage Dockerfile builds the Vite bundle with the supplied `VITE_*` arguments, then serves only `dist/` through Nginx on port `8080`. `.dockerignore` excludes local environment files, dependencies, build output, and credential files.
+
+In PowerShell, load the public client configuration from your untracked `.env` into the current shell:
+
+```powershell
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^\s*(VITE_[A-Z0-9_]+)\s*=\s*(.*)\s*$') {
+    $name = $Matches[1]
+    $value = $Matches[2].Trim().Trim('"').Trim("'")
+    [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+  }
+}
 ```
+
+Build locally. Docker reads each build argument from the matching current-shell environment variable:
+
+```powershell
+docker build -t civicresolve:local `
+  --build-arg VITE_FIREBASE_API_KEY `
+  --build-arg VITE_FIREBASE_AUTH_DOMAIN `
+  --build-arg VITE_FIREBASE_PROJECT_ID `
+  --build-arg VITE_FIREBASE_STORAGE_BUCKET `
+  --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID `
+  --build-arg VITE_FIREBASE_APP_ID `
+  --build-arg VITE_FIREBASE_MEASUREMENT_ID `
+  --build-arg VITE_RECAPTCHA_ENTERPRISE_SITE_KEY `
+  --build-arg VITE_GOOGLE_MAPS_API_KEY `
+  .
+```
+
+The Nginx SPA fallback serves `index.html` for `/dashboard`, `/report`, `/track`, and `/admin`, so refreshing a client-side route works.
+
+### Deploy to Cloud Run
+
+These commands use Artifact Registry in `asia-south1`; create the repository once. Set the project ID to the Firebase project used by the build:
+
+```powershell
+$ProjectId = "YOUR_GOOGLE_CLOUD_PROJECT_ID"
+$Region = "asia-south1"
+$Repository = "civicresolve"
+$Image = "$Region-docker.pkg.dev/$ProjectId/$Repository/civicresolve:latest"
+
+gcloud auth login
+gcloud config set project $ProjectId
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com
+gcloud artifacts repositories create $Repository `
+  --repository-format=docker `
+  --location=$Region
+gcloud auth configure-docker "$Region-docker.pkg.dev"
+
+# Tag the locally built image for Artifact Registry:
+docker tag civicresolve:local $Image
+docker push $Image
+gcloud run deploy civicresolve `
+  --image $Image `
+  --region $Region `
+  --platform managed `
+  --allow-unauthenticated `
+  --port 8080
+```
+
+If the Artifact Registry repository already exists, skip its `create` command. The public Cloud Run service serves the login page; Firebase Authentication and Firestore rules continue to enforce application access.
+
+## Screenshots
+
+Add genuine application screenshots to `docs/screenshots/` and replace these placeholders:
+
+| Screen | Placeholder |
+| --- | --- |
+| Portal selection / login | `docs/screenshots/login.png` |
+| Citizen dashboard | `docs/screenshots/citizen-dashboard.png` |
+| Complaint submission | `docs/screenshots/complaint-submission.png` |
+| Officer dashboard | `docs/screenshots/officer-dashboard.png` |

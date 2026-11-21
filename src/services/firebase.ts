@@ -2,6 +2,7 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { initAppCheck } from './appCheck';
 
 export interface FirebaseConfigStatus {
   isConfigured: boolean;
@@ -51,6 +52,10 @@ if (configStatus.isConfigured) {
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
+
+    // Initialize App Check (Debug provider in dev, reCAPTCHA Enterprise in prod)
+    initAppCheck(app);
+
     console.info('[CivicResolve] Firebase successfully initialized for project:', firebaseConfig.projectId);
   } catch (error) {
     console.warn('[CivicResolve] Firebase initialization failed. Falling back to offline client store.', error);

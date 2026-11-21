@@ -134,7 +134,7 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, e
       {/* Detailed Chronological Event Audit Log */}
       <div className="bg-white p-5 rounded-xl border border-slate-200">
         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-          Audit Timeline & Department Notes
+          Status History & Public Progress Updates
         </h4>
 
         <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
