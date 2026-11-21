@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /complaint_evidence/{allPaths=**} {
+      // Anyone can view civic photographic evidence
+      allow read: if true;
+
+      // Allow upload only if it is an image and under 5MB
+      allow write: if request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

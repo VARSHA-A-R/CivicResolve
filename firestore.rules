@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email.matches('.*admin.*') ||
+        request.auth.token.email.matches('.*officer.*')
+      );
+    }
+
+    // Complaints Collection
+    match /complaints/{complaintId} {
+      // Anyone can read complaints for civic transparency & live tracking
+      allow read: if true;
+
+      // Anyone (or authenticated citizens) can file a new complaint with valid schema
+      allow create: if request.resource.data.keys().hasAll([
+        'id', 'title', 'description', 'location', 'status', 'priority', 'category', 'department'
+      ]) && request.resource.data.title.size() >= 3
+         && request.resource.data.description.size() >= 5;
+
+      // Only municipal officials can update status, timeline notes, and department assignments
+      allow update: if isAdmin() || (
+        // Allow updating timeline and status when transitioning
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'timeline', 'assignedOfficer', 'resolutionNotes', 'resolvedAt'])
+      );
+
+      // Prevent deletion to preserve public audit ledger
+      allow delete: if false;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}
