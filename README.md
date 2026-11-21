@@ -1,185 +1,330 @@
 # CivicResolve
+### AI-Powered Civic Issue Reporting and Management Platform
 
-CivicResolve is a civic issue reporting and management portal that connects residents with municipal officers. Citizens submit and track local issues; authorized officers review the Firestore complaint queue and publish status updates.
+**CivicResolve** is a digital platform that connects citizens with municipal officers to make civic issue reporting, tracking, and resolution more transparent and efficient.
 
-## The problem
+Citizens can report problems such as damaged roads, water leakage, overflowing garbage, and broken streetlights. Municipal officers can review submitted complaints, prioritize issues, and publish status updates through a centralized dashboard.
 
-Civic issues such as damaged roads, water leaks, overflowing waste, and broken streetlights are often reported through disconnected channels. Residents have little visibility into whether an issue was received or acted on, while municipal teams lack a single, searchable queue.
+**Live Application:** https://civicresolve-35ee1.web.app
 
-## The solution
+**GitHub Repository:** https://github.com/VARSHA-A-R/CivicResolve
 
-CivicResolve provides a shared workflow for submitting, classifying, routing, and tracking reports. Firebase Authentication identifies users, Firestore stores complaints and status history, and AI-assisted classification offers decision support. Officers retain responsibility for decisions and status changes.
+---
 
-## Features
+## 1. Problem Statement
 
-- Citizen and officer login portals using Firebase email/password authentication.
-- Citizen registration and profile recovery.
-- Complaint submission with location details, optional photo, and browser location assistance.
-- Tracking IDs are returned only after the complaint is saved.
-- Citizen-visible status timeline and real-time complaint updates.
-- Officer dashboard populated from Firestore, with category, priority, status, and text filters.
-- Dashboard counts and priority cards derived from the Firestore complaint feed.
-- Officer-only status updates and private notes.
-- Gemini classification with an explicitly labeled offline heuristic fallback.
-- CSV export for officer review.
-- Firestore and Storage rules restrict access by authenticated identity and verified officer status.
+Civic issues are frequently reported through disconnected channels, making it difficult for citizens to know whether their complaints have been received or addressed.
 
-AI output is advisory. Officers make final decisions. Citizen submission writes the public complaint record; it does not write private officer assessments.
+At the same time, municipal officers face challenges in organizing complaints, identifying urgent issues, and monitoring resolution progress.
 
-## Workflows
+This creates a communication gap between citizens and local authorities.
 
-### Citizen
+## 2. Our Solution
 
-1. Select **Citizen Login** and register or sign in.
-2. Submit the issue title, description, address, and optional location/photo.
-3. Receive a tracking ID after Firestore confirms the complaint write.
-4. Open **My Civic Ledger** to follow officer-published status updates.
+CivicResolve provides a centralized digital platform where citizens can submit civic complaints and track their progress, while authorized municipal officers can manage complaints through a dedicated dashboard.
 
-### Officer
+The platform uses AI-assisted classification to support complaint categorization and prioritization, helping officers make informed decisions.
 
-1. Sign in through **Officer Login** with a provisioned Firebase Authentication account.
-2. The app verifies access by checking for `/officers/{uid}`.
-3. Review complaints loaded from Firestore and filter by domain, priority, or status.
-4. Publish citizen-visible status updates and keep private officer notes separate.
+It creates a transparent workflow between citizens and authorities, from complaint submission to status updates.
 
-Officer access is not self-granted. An authorized administrator provisions the `/officers/{uid}` document through Firebase Console or a trusted administrative process. Public users cannot create or approve officer records.
+## 3. Key Features
 
-## Technology
+### Citizen Portal
+- Secure citizen registration and login.
+- Submit complaints with title, description, address, and optional location details.
+- Optional complaint photo attachment.
+- Automatic tracking ID after successful complaint submission.
+- Personal complaint dashboard.
+- Real-time complaint status tracking and timeline.
 
-- React 18, TypeScript, Vite
-- Tailwind CSS and Lucide React
-- Firebase Authentication, Cloud Firestore, Firebase Storage, Firebase AI Logic
-- Vitest, React Testing Library, Firestore Emulator rules tests
-- Docker multi-stage build and Nginx static hosting
+### Officer Portal
+- Dedicated officer login.
+- Secure officer authorization.
+- Centralized complaint management dashboard.
+- Filter complaints by category, priority, and status.
+- Dashboard statistics and priority indicators.
+- Update complaint status.
+- Maintain private officer notes.
+- Export complaint data as CSV.
 
-## Local development
+### AI-Assisted Intelligence
+- AI-assisted complaint classification.
+- Category and priority suggestions.
+- Department routing assistance.
+- Offline heuristic fallback when AI classification is unavailable.
+- Officers retain final decision-making authority.
 
-### Requirements
+---
 
-- Node.js 20 or newer and npm
-- A Firebase project for live authentication and Firestore functionality
+## 4. Application Screenshots and Demonstration
 
-Install dependencies:
+The following screenshots demonstrate the major modules and workflows of CivicResolve.
 
-```powershell
-npm ci
-Copy-Item .env.example .env
-```
+### 4.1 Welcome Page – Portal Selection
 
-Set the Firebase web app values in `.env`:
+**Purpose:** The welcome page acts as the entry point to CivicResolve. It allows users to choose between the Citizen Portal and Officer Portal based on their role.
 
-```dotenv
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-VITE_FIREBASE_MEASUREMENT_ID=
-VITE_RECAPTCHA_ENTERPRISE_SITE_KEY=
-VITE_GOOGLE_MAPS_API_KEY=
-```
+**What it does:**
+- Introduces the CivicResolve platform.
+- Provides separate access to citizen and officer workflows.
+- Directs users to the appropriate login page.
 
-The minimum required values are `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Storage, App Check, and Maps features require their corresponding configuration.
+**Screenshot:**
 
-Run the app and checks:
+<!-- Add your welcome page screenshot below -->
 
-```powershell
-npm run dev
-npm test
-npm run build
-```
+![Welcome Page](docs/screenshots/welcome-page.png)
 
-The development server listens on port `3000`. Firestore rules emulator tests use `npm run test:rules` and require Java 21 or newer.
+---
 
-## Firebase configuration and security
+### 4.2 Citizen Registration and Login
 
-1. Create a Firebase Web App and configure Email/Password sign-in.
-2. Create the Firestore database and enable Storage if photo uploads are needed.
-3. Set the Firebase web app values in the local `.env`.
-4. Review the project ID before publishing rules. Deploy rules to the intended project:
+**Purpose:** Allows citizens to create an account or securely sign in to access the complaint reporting system.
 
-```powershell
-firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
-firebase deploy --only storage --project YOUR_FIREBASE_PROJECT_ID
-```
+**What it does:**
+- Provides email and password authentication.
+- Supports new citizen registration.
+- Allows existing users to access their accounts.
+- Provides account recovery functionality.
 
-5. In Firebase Console, provision each verified officer at `/officers/{uid}` using the UID of that person's Firebase Authentication account.
+**Screenshot:**
 
-`VITE_*` values are compiled into browser JavaScript and are public client configuration, not server secrets. Restrict Firebase and Maps API keys according to their provider guidance. Never put service-account keys, Firebase Admin credentials, private keys, or passwords in `VITE_*` variables, source control, or Docker build arguments. `VITE_APPCHECK_DEBUG_TOKEN` is for local debugging only and is deliberately excluded from the production Docker build.
+<!-- Add your citizen login screenshot below -->
 
-## Production Docker image
+![Citizen Login](docs/screenshots/citizen-login.png)
 
-The multi-stage Dockerfile builds the Vite bundle with the supplied `VITE_*` arguments, then serves only `dist/` through Nginx on port `8080`. `.dockerignore` excludes local environment files, dependencies, build output, and credential files.
+---
 
-In PowerShell, load the public client configuration from your untracked `.env` into the current shell:
+### 4.3 Citizen Dashboard – My Civic Ledger
 
-```powershell
-Get-Content .env | ForEach-Object {
-  if ($_ -match '^\s*(VITE_[A-Z0-9_]+)\s*=\s*(.*)\s*$') {
-    $name = $Matches[1]
-    $value = $Matches[2].Trim().Trim('"').Trim("'")
-    [Environment]::SetEnvironmentVariable($name, $value, 'Process')
-  }
-}
-```
+**Purpose:** Provides citizens with a centralized view of their submitted complaints and their current progress.
 
-Build locally. Docker reads each build argument from the matching current-shell environment variable:
+**What it does:**
+- Displays complaints submitted by the logged-in citizen.
+- Shows complaint tracking information.
+- Displays the latest status of each complaint.
+- Helps citizens monitor the progress of reported issues.
 
-```powershell
-docker build -t civicresolve:local `
-  --build-arg VITE_FIREBASE_API_KEY `
-  --build-arg VITE_FIREBASE_AUTH_DOMAIN `
-  --build-arg VITE_FIREBASE_PROJECT_ID `
-  --build-arg VITE_FIREBASE_STORAGE_BUCKET `
-  --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID `
-  --build-arg VITE_FIREBASE_APP_ID `
-  --build-arg VITE_FIREBASE_MEASUREMENT_ID `
-  --build-arg VITE_RECAPTCHA_ENTERPRISE_SITE_KEY `
-  --build-arg VITE_GOOGLE_MAPS_API_KEY `
-  .
-```
+**Screenshot:**
 
-The Nginx SPA fallback serves `index.html` for `/dashboard`, `/report`, `/track`, and `/admin`, so refreshing a client-side route works.
+<!-- Add your citizen dashboard screenshot below -->
 
-### Deploy to Cloud Run
+![Citizen Dashboard](docs/screenshots/citizen-dashboard.png)
 
-These commands use Artifact Registry in `asia-south1`; create the repository once. Set the project ID to the Firebase project used by the build:
+---
 
-```powershell
-$ProjectId = "YOUR_GOOGLE_CLOUD_PROJECT_ID"
-$Region = "asia-south1"
-$Repository = "civicresolve"
-$Image = "$Region-docker.pkg.dev/$ProjectId/$Repository/civicresolve:latest"
+### 4.4 Complaint Submission
 
-gcloud auth login
-gcloud config set project $ProjectId
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com
-gcloud artifacts repositories create $Repository `
-  --repository-format=docker `
-  --location=$Region
-gcloud auth configure-docker "$Region-docker.pkg.dev"
+**Purpose:** Enables citizens to report civic problems directly through the application.
 
-# Tag the locally built image for Artifact Registry:
-docker tag civicresolve:local $Image
-docker push $Image
-gcloud run deploy civicresolve `
-  --image $Image `
-  --region $Region `
-  --platform managed `
-  --allow-unauthenticated `
-  --port 8080
-```
+**What it does:**
+- Collects complaint title and description.
+- Captures the issue location and address.
+- Supports optional photo attachments.
+- Uses location assistance where browser permissions are available.
+- Generates a tracking ID after successful database submission.
 
-If the Artifact Registry repository already exists, skip its `create` command. The public Cloud Run service serves the login page; Firebase Authentication and Firestore rules continue to enforce application access.
+**Screenshot:**
 
-## Screenshots
+<!-- Add your complaint submission screenshot below -->
 
-Add genuine application screenshots to `docs/screenshots/` and replace these placeholders:
+![Complaint Submission](docs/screenshots/complaint-submission.png)
 
-| Screen | Placeholder |
-| --- | --- |
-| Portal selection / login | `docs/screenshots/login.png` |
-| Citizen dashboard | `docs/screenshots/citizen-dashboard.png` |
-| Complaint submission | `docs/screenshots/complaint-submission.png` |
-| Officer dashboard | `docs/screenshots/officer-dashboard.png` |
+---
+
+### 4.5 Complaint Tracking and Status Timeline
+
+**Purpose:** Provides transparency by allowing citizens to follow the progress of their submitted complaints.
+
+**What it does:**
+- Displays complaint details using tracking information.
+- Shows officer-published status updates.
+- Maintains a visible timeline of complaint progress.
+- Updates the citizen's view when complaint status changes.
+
+**Screenshot:**
+
+<!-- Add your complaint tracking screenshot below -->
+
+![Complaint Tracking](docs/screenshots/complaint-tracking.png)
+
+---
+
+### 4.6 Officer Login
+
+**Purpose:** Provides a dedicated authentication portal for authorized municipal officers.
+
+**What it does:**
+- Allows provisioned officers to sign in.
+- Verifies officer authorization using their authenticated account.
+- Prevents ordinary citizen accounts from accessing officer functions.
+
+**Screenshot:**
+
+<!-- Add your officer login screenshot below -->
+
+![Officer Login](docs/screenshots/officer-login.png)
+
+---
+
+### 4.7 Officer Dashboard
+
+**Purpose:** Acts as the central complaint management interface for authorized municipal officers.
+
+**What it does:**
+- Displays complaints submitted by citizens.
+- Shows complaint counts and priority indicators.
+- Provides category, priority, status, and text filters.
+- Helps officers identify complaints requiring attention.
+- Displays complaint information for review.
+
+**Screenshot:**
+
+<!-- Add your officer dashboard screenshot below -->
+
+![Officer Dashboard](docs/screenshots/officer-dashboard.png)
+
+---
+
+### 4.8 Complaint Review and Status Management
+
+**Purpose:** Allows officers to review individual complaints and communicate progress to citizens.
+
+**What it does:**
+- Displays detailed complaint information.
+- Allows authorized officers to update complaint status.
+- Supports private internal officer notes.
+- Publishes status changes that citizens can track.
+
+**Screenshot:**
+
+<!-- Add your complaint management screenshot below -->
+
+![Complaint Management](docs/screenshots/complaint-management.png)
+
+---
+
+### 4.9 AI-Assisted Complaint Classification
+
+**Purpose:** Uses AI-assisted analysis to support the classification and prioritization of reported civic issues.
+
+**What it does:**
+- Analyzes complaint descriptions.
+- Suggests relevant complaint categories.
+- Assists with priority identification and department routing.
+- Provides an offline heuristic fallback when AI classification is unavailable.
+
+AI-generated results are advisory. Final decisions remain with authorized officers.
+
+**Screenshot:**
+
+<!-- Add your AI classification screenshot below -->
+
+![AI Classification](docs/screenshots/ai-classification.png)
+
+---
+
+## 5. Sample Demo Login Credentials
+
+Judges can use the following demo accounts to explore the application.
+
+### Citizen Demo Account
+
+| Field | Details |
+|---|---|
+| Portal | Citizen Login |
+| Email / Username | `YOUR_DEMO_CITIZEN_EMAIL` |
+| Password | `YOUR_DEMO_CITIZEN_PASSWORD` |
+
+**Access:** Use this account to submit complaints, view the citizen dashboard, and track complaint progress.
+
+### Officer Demo Account
+
+| Field | Details |
+|---|---|
+| Portal | Officer Login |
+| Email / Username | `YOUR_DEMO_OFFICER_EMAIL` |
+| Password | `YOUR_DEMO_OFFICER_PASSWORD` |
+
+**Access:** Use this account to view submitted complaints, filter the complaint queue, review details, and publish status updates.
+
+**Note:** The officer demo account must be provisioned and authorized before testing. Officer access is verified through the corresponding `/officers/{uid}` document in Firestore. Officer registration is not publicly available.
+
+---
+
+## 6. How to Explore the Application
+
+1. Open the live application: https://civicresolve-35ee1.web.app
+2. Select the Citizen Portal.
+3. Sign in using the Citizen Demo Account credentials.
+4. Explore the citizen dashboard and existing complaints.
+5. Submit a test complaint if needed.
+6. Sign out and return to the welcome page.
+7. Select the Officer Portal.
+8. Sign in using the Officer Demo Account credentials.
+9. Explore the complaint management dashboard.
+10. Open a complaint and test the status update workflow.
+11. Return to the Citizen Portal to observe the updated complaint status.
+
+Please use test complaints rather than submitting genuine personal information.
+
+---
+
+## 7. Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| Frontend | React 18, TypeScript |
+| Build Tool | Vite |
+| Styling | Tailwind CSS, Lucide React |
+| Authentication | Firebase Authentication |
+| Database | Cloud Firestore |
+| File Storage | Firebase Storage (when configured) |
+| AI Integration | Firebase AI Logic / Gemini |
+| Testing | Vitest, React Testing Library, Firestore Emulator |
+| Deployment | Firebase Hosting |
+| Containerization | Docker, Nginx |
+
+---
+
+## 8. Security and Access Control
+
+CivicResolve uses Firebase Authentication and Firestore security rules to protect application data.
+
+- Citizens can access their own complaint records according to the security rules.
+- Officer access requires an authenticated account and a corresponding authorized officer record.
+- Citizens cannot grant themselves officer privileges.
+- Private officer notes and public complaint information are handled separately.
+- Complaint submission does not allow citizens to create private officer assessments.
+- AI-generated recommendations do not automatically authorize complaint decisions.
+
+---
+
+## 9. Future Enhancements
+
+- More advanced AI-assisted complaint analysis.
+- Improved department-level routing.
+- Notifications for complaint status changes.
+- Advanced analytics for municipal authorities.
+- Geographic visualization of reported civic issues.
+- Expanded administrative tools for officer management.
+
+---
+
+## 10. Project Links
+
+| Resource | Link |
+|---|---|
+| Live Application | https://civicresolve-35ee1.web.app |
+| GitHub Repository | https://github.com/VARSHA-A-R/CivicResolve |
+| Hosting Platform | Firebase Hosting |
+
+---
+
+## 11. Conclusion
+
+CivicResolve aims to make civic issue reporting more accessible, organized, and transparent by connecting citizens and municipal officers through a unified digital platform.
+
+By combining real-time data management, secure role-based access, and AI-assisted classification, the platform supports a more structured approach to handling local civic issues.
+
+**CivicResolve – Report. Track. Resolve.**
