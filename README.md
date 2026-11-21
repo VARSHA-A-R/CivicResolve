@@ -72,6 +72,8 @@ The following screenshots demonstrate the major modules and workflows of CivicRe
 **Screenshot:**
 
 <!-- Add your welcome page screenshot below -->
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/5415a397-f694-40c1-8732-d15996cbfc55" />
+
 
 ![Welcome Page](docs/screenshots/welcome-page.png)
 
